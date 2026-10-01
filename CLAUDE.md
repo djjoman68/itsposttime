@@ -23,7 +23,8 @@ Repo: https://github.com/djjoman68/itsposttime
 - Hardware bought (Oct 1 2026): Pi 3A+ and microSD in hand; Bonnet, 64x32 4mm panel, 5V 4A supply,
   extra-tall header and heatsink ordered from Adafruit, in the mail. Nothing has run on a real panel or
   against live NYRA polling yet.
-- Next: flash the SD card (SETUP.md step 1) while waiting, then build following SETUP.md.
+- SD card flashed (SETUP.md step 1 done, Oct 1 2026). Next: when the Adafruit parts arrive, continue
+  from SETUP.md step 2.
 
 ## Layout
 
