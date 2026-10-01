@@ -20,8 +20,10 @@ Repo: https://github.com/djjoman68/itsposttime
 ## Status (Oct 2026)
 
 - Software complete and tested offline: race board, idle screens, web UI, installer, setup guide.
-- Hardware NOT bought yet. Nothing has run on a real panel or against live NYRA polling.
-- Next: shopping list, then build following SETUP.md.
+- Hardware bought (Oct 1 2026): Pi 3A+ and microSD in hand; Bonnet, 64x32 4mm panel, 5V 4A supply,
+  extra-tall header and heatsink ordered from Adafruit, in the mail. Nothing has run on a real panel or
+  against live NYRA polling yet.
+- Next: flash the SD card (SETUP.md step 1) while waiting, then build following SETUP.md.
 
 ## Layout
 
