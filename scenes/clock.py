@@ -1,3 +1,5 @@
+# Modified for the LED odds board (2026): removed FAA airport and ISS alerts; NWS weather alerts kept.
+# Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from datetime import datetime, timezone
 from utilities.temperature import grab_forecast, _load_file_cache, _save_file_cache
 from utilities.animator import Animator
@@ -7,16 +9,6 @@ import logging
 import os
 import time
 from config import CLOCK_FORMAT, NIGHT_END, NIGHT_START
-
-try:
-    from utilities.airport_status import get_airport_alerts
-except ImportError:
-    get_airport_alerts = lambda: []
-
-try:
-    from utilities.iss import get_iss_alert
-except ImportError:
-    get_iss_alert = lambda: None
 
 try:
     from utilities.nws import get_nws_alerts
@@ -167,23 +159,6 @@ class ClockScene(object):
                 color = _ALERT_COLOURS.get(a.get("color", "orange"), colours.LIGHT_ORANGE)
                 items.append((a["text"], color))
             return items
-
-        # FAA airport delays
-        try:
-            faa = get_airport_alerts()
-        except Exception:
-            faa = []
-        for a in faa:
-            color = _ALERT_COLOURS.get(a.get("color", "orange"), colours.LIGHT_ORANGE)
-            items.append((a["text"], color))
-
-        # ISS overhead pass warning
-        try:
-            iss = get_iss_alert()
-        except Exception:
-            iss = None
-        if iss:
-            items.append((iss["text"], _ALERT_COLOURS.get(iss["color"], colours.WHITE)))
 
         # NWS weather alerts
         try:

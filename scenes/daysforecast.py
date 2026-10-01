@@ -1,3 +1,5 @@
+# Modified for the LED odds board (2026): icons loaded from the project folder; tracked-flight hook removed.
+# Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from collections import Counter
 from datetime import datetime, timedelta
 from PIL import Image
@@ -6,6 +8,8 @@ from utilities.animator import Animator
 from setup import colours, fonts, frames, screen
 from utilities.temperature import grab_forecast, grab_hourly_forecast
 from config import NIGHT_START, NIGHT_END
+import os
+_ICON_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icons")
 from rgbmatrix import graphics
 
 # Setup
@@ -228,12 +232,6 @@ class DaysForecastScene(object):
             self._redraw_forecast = True
             return
 
-        if self.overhead.tracked_data is not None:
-            if not self._redraw_forecast:
-                self.draw_square(0, 12, 64, 32, colours.BLACK)
-                self._redraw_forecast = True
-            return
-
         current_hour = datetime.now().hour
         eff_mode = self._effective_mode()
         mode_changed = eff_mode != self._active_mode
@@ -345,11 +343,11 @@ class DaysForecastScene(object):
         # fall back to its 4-digit base code (always present for daily mode).
         image = None
         try:
-            image = Image.open(f"icons/{icon}.png")
+            image = Image.open(os.path.join(_ICON_DIR, f"{icon}.png"))
         except FileNotFoundError:
             try:
                 base = int(icon) // 10
-                image = Image.open(f"icons/{base}.png")
+                image = Image.open(os.path.join(_ICON_DIR, f"{base}.png"))
             except (FileNotFoundError, ValueError, TypeError):
                 image = None
 

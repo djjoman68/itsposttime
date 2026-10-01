@@ -1,3 +1,5 @@
+# Modified for the LED odds board (2026): comment updated for race mode.
+# Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from datetime import datetime, timedelta
 import time
 import colorsys
@@ -45,7 +47,7 @@ class TemperatureScene(object):
             self._redraw_temp = True
             return
 
-        # Yield when a plane is overhead
+        # Yield while the race board is showing
         if len(self._data):
             self._redraw_temp = True
             return
