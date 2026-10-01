@@ -1,4 +1,4 @@
-# LED Odds Board
+# It's Post Time — LED Odds Board
 
 A Raspberry Pi and a 64x32 RGB LED panel that show live odds and minutes-to-post
 for **Saratoga** or **Belmont Park**, and a clock with a 3-day forecast the rest of the time.

@@ -93,11 +93,11 @@ wrong place, reseat the Bonnet and try again. Don't continue until this works.
 
 ## 6. Install the odds board
 
-Download the project from GitHub (use your own GitHub username in the address):
+Download the project from GitHub:
 
     cd ~
-    git clone https://github.com/YOUR-GITHUB-NAME/odds-board.git
-    cd odds-board
+    git clone https://github.com/djjoman68/itsposttime.git
+    cd itsposttime
     bash install.sh
 
 If your GitHub repository is **private**, git will ask for a username and password. Use your
@@ -134,7 +134,7 @@ Done. The board shows clock and weather, and switches to the race board 90 minut
 
 After new changes are pushed to GitHub:
 
-    cd ~/odds-board
+    cd ~/itsposttime
     git pull
     bash install.sh
 
