@@ -100,6 +100,10 @@ Download the project from GitHub (use your own GitHub username in the address):
     cd odds-board
     bash install.sh
 
+If your GitHub repository is **private**, git will ask for a username and password. Use your
+GitHub username, and for the password a personal access token (GitHub -> Settings -> Developer
+settings -> Personal access tokens -> Fine-grained, read-only access to this one repository).
+
 The installer checks the panel library, installs what it needs, sets up auto-start, and starts the
 board. It ends by printing the web address.
 
