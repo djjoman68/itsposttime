@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odds Board</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% set page = 'home' %}{% include '_header.html' %}
+<div class="ticker" id="ticker">Connecting…</div>
+<div class="content">
+
+  <div class="section">
+    <div class="section-header">On the panel now</div>
+    <div class="section-body single">
+      <div class="panel" id="panel"><div class="idle-note">Loading…</div></div>
+      <div class="stat" id="details"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Quick controls</div>
+    <div class="section-body">
+      <div class="field">
+        <label>Track</label>
+        <div class="toggle" data-key="track">
+          <button data-val="saratoga">Saratoga</button><button data-val="belmont">Belmont</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Race view</label>
+        <div class="toggle" data-key="view">
+          <button data-val="full">Full board</button><button data-val="big_mtp">Big MTP</button>
+        </div>
+      </div>
+      <div class="hint">Changes reach the panel within a few seconds.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">System</div>
+    <div class="section-body single"><div class="stat" id="system">…</div></div>
+  </div>
+</div>
+
+<script>
+const TRACK_NAMES = {saratoga: "Saratoga", belmont: "Belmont Park"};
+let lastMode = null;
+
+function fmtPost(iso) {
+  if (!iso) return "";
+  const [h, m] = iso.slice(11, 16).split(":").map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"} ET`;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/status"); const d = await r.json();
+    const s = d.status, racing = d.racing;
+    document.querySelectorAll(".toggle").forEach(t => {
+      t.querySelectorAll("button").forEach(b => b.classList.toggle("on", racing[t.dataset.key] === b.dataset.val));
+    });
+    const ticker = document.getElementById("ticker");
+    const panel = document.getElementById("panel");
+    const details = document.getElementById("details");
+    if (!s || s.age_seconds > 30) {
+      ticker.textContent = "Display not running — check the service or restart from Settings";
+      panel.innerHTML = '<div class="idle-note">No signal from the display</div>';
+      details.innerHTML = ""; lastMode = null; return;
+    }
+    const track = TRACK_NAMES[s.track] || s.track;
+    if (s.mode === "race") {
+      ticker.textContent = `${track} · Race ${s.race} · Post ${fmtPost(s.post_time)}`;
+      panel.innerHTML = `<img src="/board.png?t=${Date.now()}" alt="Race board">`;
+      details.innerHTML = `<b>Race ${s.race}</b> · ${s.runners} running · view: ${s.view === "big_mtp" ? "Big MTP" : "Full board"}`;
+    } else {
+      ticker.textContent = `${track} · No race within the window — showing clock & weather`;
+      if (lastMode !== "idle") panel.innerHTML = '<div class="idle-note">Clock &amp; weather</div>';
+      details.innerHTML = "";
+    }
+    if (s.feed_updated) details.innerHTML += `<br>NYRA last checked: ${s.feed_updated.slice(11)}`;
+    if (s.feed_error) details.innerHTML += `<br><span class="err-text">Last error: ${s.feed_error}</span>`;
+    lastMode = s.mode;
+  } catch (e) {
+    document.getElementById("ticker").textContent = "Can't reach the board";
+  }
+}
+
+async function refreshSystem() {
+  try {
+    const d = await (await fetch("/api/system")).json();
+    const up = d.uptime_secs != null ? `${Math.floor(d.uptime_secs / 3600)}h ${Math.floor(d.uptime_secs % 3600 / 60)}m` : "—";
+    document.getElementById("system").innerHTML =
+      `CPU temp: <b>${d.cpu_temp_c != null ? d.cpu_temp_c + "°C" : "—"}</b> · Uptime: <b>${up}</b>`;
+  } catch (e) {}
+}
+
+document.querySelectorAll(".toggle").forEach(t => {
+  t.querySelectorAll("button").forEach(b => b.addEventListener("click", async () => {
+    t.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    await fetch("/api/config", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({config: {racing: {[t.dataset.key]: b.dataset.val}}})});
+    setTimeout(refresh, 1500);
+  }));
+});
+
+refresh(); refreshSystem();
+setInterval(refresh, 2000); setInterval(refreshSystem, 30000);
+</script>
+</body>
+</html>

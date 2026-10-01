@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Odds Board — Settings</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% set page = 'config' %}{% include '_header.html' %}
+<div class="ticker">Race settings apply within seconds · Weather, clock and hardware settings apply after Restart</div>
+<div class="content">
+
+  <div class="section">
+    <div class="section-header">Racing</div>
+    <div class="section-body">
+      <div class="field"><label>Track</label>
+        <select data-path="config.racing.track"><option value="saratoga">Saratoga</option><option value="belmont">Belmont Park</option></select></div>
+      <div class="field"><label>Race view</label>
+        <select data-path="config.racing.view"><option value="full">Full board</option><option value="big_mtp">Big MTP</option></select></div>
+      <div class="field"><label>Show race board when post is within (minutes)</label>
+        <input type="number" min="5" max="180" data-path="config.racing.race_window_minutes" data-type="int">
+        <span class="hint">Outside this window the panel shows clock &amp; weather.</span></div>
+      <div class="field"><label>Page flip for big fields (seconds)</label>
+        <input type="number" min="2" max="30" data-path="config.racing.page_seconds" data-type="int">
+        <span class="hint">Used when more than 10 horses are running.</span></div>
+      <div class="field"><label>Odds refresh (seconds)</label>
+        <input type="number" min="10" max="120" data-path="config.racing.poll_seconds" data-type="int">
+        <span class="hint">Minimum 10. 20 is gentle on NYRA's site.</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Clock &amp; weather</div>
+    <div class="section-body">
+      <div class="field"><label>Weather location (lat,lon)</label>
+        <input type="text" placeholder="40.72,-73.70" data-path="config.location.temperature_location">
+        <span class="hint">Tip: right-click a spot in Google Maps to copy its coordinates.</span></div>
+      <div class="field"><label>Tomorrow.io API key</label>
+        <input type="text" data-path="secrets.tomorrow_api_key" autocomplete="off">
+        <span class="hint">Free key from tomorrow.io — powers the forecast.</span></div>
+      <div class="field"><label>Temperature units</label>
+        <select data-path="config.location.temperature_units"><option value="imperial">°F</option><option value="metric">°C</option></select></div>
+      <div class="field"><label>Clock format</label>
+        <select data-path="config.location.clock_format"><option value="12hr">12-hour</option><option value="24hr">24-hour</option></select></div>
+      <div class="field"><label>Forecast days</label>
+        <input type="number" min="1" max="3" data-path="config.display.forecast_days" data-type="int"></div>
+      <div class="field"><label>Forecast mode</label>
+        <select data-path="config.display.forecast_mode"><option value="daily">Daily</option><option value="hourly">Hourly</option><option value="scheduled">Hourly in a window, daily otherwise</option></select></div>
+      <div class="field"><label>Hourly window start</label><input type="time" data-path="config.display.forecast_hourly_start"></div>
+      <div class="field"><label>Hourly window end</label><input type="time" data-path="config.display.forecast_hourly_end"></div>
+      <div class="field checkbox"><input type="checkbox" id="nws" data-path="config.display.weather_alerts_enabled"><label for="nws">Show severe weather alerts (NWS)</label></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Display</div>
+    <div class="section-body">
+      <div class="field"><label>Brightness (%)</label>
+        <input type="number" min="1" max="100" data-path="config.display.brightness" data-type="int"></div>
+      <div class="field checkbox"><input type="checkbox" id="nb" data-path="config.display.night_brightness"><label for="nb">Dim at night</label></div>
+      <div class="field"><label>Night brightness (%)</label>
+        <input type="number" min="1" max="100" data-path="config.display.brightness_night" data-type="int"></div>
+      <div class="field"><label>Night starts</label><input type="time" data-path="config.display.night_start"></div>
+      <div class="field"><label>Night ends</label><input type="time" data-path="config.display.night_end"></div>
+      <div class="field"><label>GPIO slowdown</label>
+        <input type="number" min="0" max="5" data-path="config.display.gpio_slowdown" data-type="int">
+        <span class="hint">2 for a Pi 3A+; raise to 4 on a Pi 4 if the panel flickers.</span></div>
+      <div class="field checkbox"><input type="checkbox" id="pwm" data-path="config.display.hat_pwm_enabled"><label for="pwm">Bonnet PWM solder bridge installed</label></div>
+      <div class="field"><label>LED color order</label>
+        <select data-path="config.display.led_rgb_sequence"><option>RGB</option><option>RBG</option><option>GRB</option><option>GBR</option><option>BRG</option><option>BGR</option></select>
+        <span class="hint">Change only if colors look swapped on the panel.</span></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-save" id="save">Save</button>
+    <button class="btn btn-reset" id="restart">Restart display</button>
+    <span id="msg"></span>
+  </div>
+</div>
+
+<script>
+const fields = [...document.querySelectorAll("[data-path]")];
+const get = (o, p) => p.split(".").reduce((a, k) => a == null ? a : a[k], o);
+function set(o, p, v) { const ks = p.split("."); ks.slice(0, -1).reduce((a, k) => a[k] ??= {}, o)[ks.at(-1)] = v; }
+function msg(t, ok) { const m = document.getElementById("msg"); m.textContent = t; m.className = ok ? "ok" : "err"; }
+
+async function load() {
+  const d = await (await fetch("/api/config")).json();
+  fields.forEach(f => {
+    const v = get(d, f.dataset.path);
+    if (f.type === "checkbox") f.checked = !!v; else if (v != null) f.value = v;
+  });
+}
+
+document.getElementById("save").onclick = async () => {
+  const body = {};
+  fields.forEach(f => {
+    let v = f.type === "checkbox" ? f.checked : f.value;
+    if (f.dataset.type === "int") v = parseInt(v, 10);
+    set(body, f.dataset.path, v);
+  });
+  const r = await fetch("/api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const d = await r.json();
+  if (d.ok) { msg("Saved", true); load(); } else msg("Save failed: " + (d.error || r.status), false);
+};
+
+document.getElementById("restart").onclick = async () => {
+  await fetch("/api/restart", {method: "POST"});
+  msg("Restarting… the panel will be back in about 20 seconds", true);
+};
+
+load();
+</script>
+</body>
+</html>
