@@ -93,16 +93,10 @@ wrong place, reseat the Bonnet and try again. Don't continue until this works.
 
 ## 6. Install the odds board
 
-On **your computer**, open a new PowerShell/Terminal window in the folder where you saved
-`odds-board.zip` (usually Downloads) and copy it to the Pi:
-
-    cd Downloads
-    scp odds-board.zip joe@oddsboard.local:~
-
-Back in the Pi window:
+Download the project from GitHub (use your own GitHub username in the address):
 
     cd ~
-    unzip -o odds-board.zip
+    git clone https://github.com/YOUR-GITHUB-NAME/odds-board.git
     cd odds-board
     bash install.sh
 
@@ -134,14 +128,13 @@ Done. The board shows clock and weather, and switches to the race board 90 minut
 
 ## Updating to a new version
 
-Copy the new zip over (step 6), then:
+After new changes are pushed to GitHub:
 
-    cd ~
-    unzip -o odds-board.zip
-    cd odds-board
+    cd ~/odds-board
+    git pull
     bash install.sh
 
-Your settings and API key are kept.
+Your settings and API key are kept (they're never stored in git).
 
 ## If something's wrong
 
