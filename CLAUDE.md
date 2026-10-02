@@ -27,6 +27,7 @@ Repo: https://github.com/djjoman68/itsposttime
   panel attached. install.sh worked; the service runs and the web UI loads at oddsboard.local:8080.
   Next: step 7 settings now; when the Adafruit parts arrive, steps 2 and 5 (assembly, panel test).
 - Oct 2 2026: clock & weather picture on the Board page confirmed working on the real Pi.
+- Oct 2 2026: auto track (picked Belmont) and today's card confirmed on the real Pi during a live Belmont card.
 
 ## Layout
 
