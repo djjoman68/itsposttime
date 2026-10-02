@@ -1,60 +1,113 @@
-/* Look and feel carried over from the plane tracker's web UI */
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+/* Saratoga look: grandstand green and white trim, red-and-white striped awnings,
+   a Victorian racing-program headline face, and the panel framed like the infield tote board. */
+@import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;500;600&family=Courier+Prime&display=swap');
 :root {
-  --bg: #0d0d0b; --amber: #ffb300; --amber-dim: #7a5500; --amber-bright: #ffd54f;
-  --green: #69f0ae; --red: #ff3d00; --board: rgba(255,179,0,0.02);
+  --green: #1e4a34;        /* grandstand roof and trim */
+  --green-deep: #12301f;   /* tote board */
+  --red: #b3202a;          /* awning red */
+  --red-dark: #8e1820;
+  --linen: #f8f6f0;        /* painted clapboard */
+  --paper: #ffffff;
+  --ink: #1c2a21;
+  --muted: #5e6d63;
+  --rule: #d8d2c3;
+  --gold: #c4a052;         /* gilded trim, used sparingly */
+  --ok: #1f7a45;
+  --display: 'Abril Fatface', 'Bodoni 72', Didot, Georgia, serif;
+  --serif: 'Old Standard TT', Georgia, 'Times New Roman', serif;
+  --sans: 'Libre Franklin', 'Franklin Gothic Medium', 'Segoe UI', Arial, sans-serif;
+  --mono: 'Courier Prime', ui-monospace, Consolas, monospace;
+  color-scheme: light;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--amber); font-family: 'Share Tech Mono', ui-monospace, monospace;
+body { background: var(--linen); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.45;
        min-height: 100vh; padding-bottom: 40px; }
-body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1000;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); }
-.board-header { background: var(--amber); color: var(--bg); padding: 10px 20px; display: flex; align-items: center;
-                gap: 12px; flex-wrap: wrap; }
-.board-title { font-family: 'VT323', monospace; font-size: 32px; letter-spacing: 4px; text-transform: uppercase; }
-.nav-links { margin-left: auto; display: flex; gap: 10px; }
-.nav-links a { font-family: 'VT323', monospace; font-size: 20px; letter-spacing: 2px; background: var(--bg);
-               color: var(--amber); padding: 2px 12px; text-decoration: none; }
-.nav-links a:hover, .nav-links a.active { background: var(--amber-bright); color: var(--bg); outline: 1px solid var(--bg); }
-.ticker { background: rgba(255,179,0,0.12); border-bottom: 1px solid var(--amber-dim); padding: 6px 20px;
-          font-size: 12px; letter-spacing: 2px; color: var(--amber-dim); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Header: green roofline with the striped, scalloped awning valance hanging below it */
+.board-header { position: relative; z-index: 2; background: var(--green); color: var(--linen);
+                padding: 14px 20px 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                border-bottom: 2px solid var(--gold); }
+.board-header::after { content: ''; position: absolute; left: 0; right: 0; top: calc(100% + 2px); height: 24px;
+  background: repeating-linear-gradient(90deg, var(--red) 0 22px, var(--paper) 22px 44px);
+  -webkit-mask: linear-gradient(#000, #000) top / 100% 12px no-repeat,
+                radial-gradient(circle 11px at 11px 12px, #000 97%, transparent 100%) 0 0 / 22px 24px repeat-x;
+          mask: linear-gradient(#000, #000) top / 100% 12px no-repeat,
+                radial-gradient(circle 11px at 11px 12px, #000 97%, transparent 100%) 0 0 / 22px 24px repeat-x; }
+/* Soft shadow under the valance so the white stripes read against the light page */
+.board-header::before { content: ''; position: absolute; left: 0; right: 0; top: calc(100% + 5px); height: 24px;
+  background: rgba(28, 42, 33, 0.16);
+  -webkit-mask: linear-gradient(#000, #000) top / 100% 12px no-repeat,
+                radial-gradient(circle 11px at 11px 12px, #000 97%, transparent 100%) 0 0 / 22px 24px repeat-x;
+          mask: linear-gradient(#000, #000) top / 100% 12px no-repeat,
+                radial-gradient(circle 11px at 11px 12px, #000 97%, transparent 100%) 0 0 / 22px 24px repeat-x; }
+.board-title { font-family: var(--display); font-size: 34px; line-height: 1; letter-spacing: 1px; color: var(--paper); }
+.nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.nav-links a { font-family: var(--serif); font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+               color: var(--linen); padding: 5px 12px; text-decoration: none; border: 1px solid transparent; }
+.nav-links a:hover { border-color: rgba(248, 246, 240, 0.5); }
+.nav-links a.active { background: var(--linen); color: var(--green); font-weight: 700; }
+
+/* Status line sits under the awning */
+.ticker { padding: 34px 20px 10px; font-family: var(--serif); font-style: italic; font-size: 15px;
+          color: var(--green); text-align: center; border-bottom: 1px solid var(--rule); }
+
 .content { padding: 20px 16px; max-width: 900px; margin: 0 auto; }
-.section { border: 1px solid var(--amber-dim); margin-bottom: 16px; background: var(--board); }
-.section-header { font-family: 'VT323', monospace; font-size: 20px; letter-spacing: 3px; text-transform: uppercase;
-                  color: var(--amber-bright); padding: 10px 16px; border-bottom: 1px solid var(--amber-dim);
-                  background: rgba(255,179,0,0.04); }
-.section-body { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
+.section { background: var(--paper); border: 1px solid var(--rule); margin-bottom: 18px;
+           box-shadow: 0 1px 0 rgba(28, 42, 33, 0.04); }
+.section-header { font-family: var(--serif); font-weight: 700; font-size: 14px; letter-spacing: 3px;
+                  text-transform: uppercase; color: var(--green); padding: 12px 16px 10px;
+                  border-bottom: 1px solid var(--rule); }
+.section-header::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 10px;
+                          background: var(--red); transform: rotate(45deg) translateY(-2px); }
+.section-body { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
 .section-body.single { grid-template-columns: 1fr; }
-@media (max-width: 600px) { .section-body { grid-template-columns: 1fr; } }
-.field { display: flex; flex-direction: column; gap: 4px; }
-.field label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--amber-dim); }
-.field input, .field select { background: #0a0a08; border: 1px solid var(--amber-dim); color: var(--amber);
-  font-family: inherit; font-size: 14px; padding: 7px 10px; outline: none; width: 100%; }
-.field input:focus, .field select:focus { border-color: var(--amber); }
+@media (max-width: 600px) {
+  .section-body { grid-template-columns: 1fr; }
+  .board-title { font-size: 28px; }
+  .nav-links { margin-left: 0; }
+}
+
+/* Forms */
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+.field input, .field select { background: var(--paper); border: 1px solid var(--rule); color: var(--ink);
+  font-family: var(--sans); font-size: 15px; padding: 8px 10px; width: 100%; border-radius: 2px; }
+.field input:focus, .field select:focus { border-color: var(--green); outline: 1px solid var(--green); }
 .field.checkbox { flex-direction: row; align-items: center; gap: 10px; }
-.field.checkbox input { width: auto; height: 16px; accent-color: var(--amber); }
-.field.checkbox label { font-size: 13px; letter-spacing: 1px; color: var(--amber); }
-.hint { font-size: 11px; color: var(--amber-dim); }
-.actions { display: flex; gap: 12px; align-items: center; padding: 16px; border-top: 1px solid var(--amber-dim);
-           position: sticky; bottom: 0; background: var(--bg); z-index: 10; flex-wrap: wrap; }
-.btn { font-family: 'VT323', monospace; font-size: 20px; letter-spacing: 2px; padding: 6px 20px; cursor: pointer;
-       border: none; text-transform: uppercase; }
-.btn-save { background: var(--amber); color: var(--bg); }
-.btn-save:hover { background: var(--amber-bright); }
-.btn-reset { background: transparent; border: 1px solid var(--amber-dim); color: var(--amber-dim); }
-.btn-reset:hover { border-color: var(--amber); color: var(--amber); }
-#msg { font-size: 13px; letter-spacing: 1px; }
-#msg.ok { color: var(--green); } #msg.err { color: var(--red); }
-.toggle { display: flex; border: 1px solid var(--amber-dim); width: fit-content; }
-.toggle button { font-family: 'VT323', monospace; font-size: 22px; letter-spacing: 2px; padding: 6px 18px;
-                 background: transparent; color: var(--amber-dim); border: none; cursor: pointer; text-transform: uppercase; }
-.toggle button.on { background: var(--amber); color: var(--bg); }
-.toggle button:hover:not(.on) { color: var(--amber); }
-.panel { background: #111; border: 1px solid var(--amber-dim); padding: 10px; display: flex; justify-content: center; }
+.field.checkbox input { width: auto; height: 16px; accent-color: var(--green); }
+.field.checkbox label { font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.hint { font-size: 12px; color: var(--muted); }
+
+.actions { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-top: 1px solid var(--rule);
+           position: sticky; bottom: 0; background: var(--paper); z-index: 10; flex-wrap: wrap; }
+.btn { font-family: var(--serif); font-weight: 700; font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+       padding: 9px 22px; cursor: pointer; border: 1px solid transparent; border-radius: 2px; }
+.btn-save { background: var(--red); color: var(--paper); }
+.btn-save:hover { background: var(--red-dark); }
+.btn-reset { background: transparent; border-color: var(--green); color: var(--green); }
+.btn-reset:hover { background: var(--green); color: var(--paper); }
+#msg { font-size: 14px; }
+#msg.ok { color: var(--ok); } #msg.err { color: var(--red); }
+
+/* Track and view switches */
+.toggle { display: flex; border: 1px solid var(--green); width: fit-content; max-width: 100%; border-radius: 2px; }
+.toggle button { font-family: var(--serif); font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+                 padding: 8px 16px; background: var(--paper); color: var(--green); border: none; cursor: pointer; }
+.toggle button + button { border-left: 1px solid var(--green); }
+.toggle button.on { background: var(--green); color: var(--paper); font-weight: 700; }
+.toggle button:hover:not(.on) { background: #e9efe9; }
+
+/* The LED panel picture, framed like the infield tote board */
+.panel { background: var(--green-deep); border: 1px solid var(--gold); outline: 4px solid var(--green);
+         outline-offset: 0; padding: 14px; display: flex; justify-content: center; margin: 4px; }
 .panel img { width: 100%; max-width: 512px; height: auto; display: block; }
-.idle-note { font-family: 'VT323', monospace; font-size: 26px; letter-spacing: 2px; padding: 40px 10px; text-align: center; }
-.stat { font-size: 13px; letter-spacing: 1px; line-height: 1.8; }
-.stat b { color: var(--amber-bright); font-weight: normal; }
+.idle-note { font-family: var(--serif); font-style: italic; font-size: 20px; color: var(--linen);
+             padding: 40px 10px; text-align: center; }
+.stat { font-size: 14px; line-height: 1.8; color: var(--muted); }
+.stat b { color: var(--ink); font-weight: 600; }
 .err-text { color: var(--red); }
-pre.log { font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; padding: 12px;
-          max-height: 70vh; overflow-y: auto; color: var(--amber); }
+
+pre.log { font-family: var(--mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+          padding: 12px; max-height: 70vh; overflow-y: auto; color: var(--ink); background: var(--paper); }
