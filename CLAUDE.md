@@ -37,8 +37,8 @@ Repo: https://github.com/djjoman68/itsposttime
 | `display/__init__.py` | Main loop (plane tracker Animator). `_data` = `[race]` in race mode, `[]` idle. Watches config mtime, writes status + frame to /dev/shm/odds-board for the web UI |
 | `scenes/race.py` | Draws the race board each second via `canvas.SetImage(PIL image)` |
 | `scenes/clock.py`, `date.py`, `temperature.py`, `daysforecast.py` | Idle screens from the plane tracker. They step aside when `_data` is non-empty |
-| `utilities/nyra.py` | Parses NYRA pages: `current_race()`, `parse_race()`, `minutes_to_post()` |
-| `utilities/racefeed.py` | Background polling thread |
+| `utilities/nyra.py` | Parses NYRA pages: `current_race()`, `parse_race()`, `minutes_to_post()`, `racing_on()`, `race_numbers()`, `card_states()` |
+| `utilities/racefeed.py` | Background polling thread; resolves the "auto" track and reads today's card |
 | `utilities/race_render.py` | Pure Pillow drawing of both race views, custom 3x5 pixel font, saddle cloth colors |
 | `utilities/idle_render.py` | Web UI picture of the clock & weather screen: idle scenes `record()` what they draw, `render_idle()` redraws it with the panel's .bdf fonts |
 | `web/` | Flask app on :8080 — Board, Settings, Logs |
@@ -73,8 +73,11 @@ to the plane tracker (NWS alerts kept, FAA and ISS alerts removed).
 
 Web UI: Saratoga style (Joe's call, Oct 2026; replaced the amber plane-tracker look): header in the
 Saratoga logo's red (#d33a2c) with flared capitals and a small white canopy, red-and-white scalloped awning
-valance, red controls; the panel picture framed in tote-board green, the only green on the page. All in web/static/style.css; purely visual. Track toggle (Saratoga/Belmont) and view toggle (Full/Big MTP) on the
-Board page. "On the panel now" shows a picture in both modes, like the plane tracker's display mirror: the
+valance, red controls; the panel picture framed in tote-board green, the only green on the page. All in web/static/style.css; purely visual.
+Track toggle (Auto/Saratoga/Belmont) and view toggle (Full/Big MTP) on the Board page. Auto (the default) follows
+whichever track's page is counting down to a race today, Saratoga checked first, and sticks with it for the day.
+"Today's card" section lists every race (post ET, distance, surface, field size), next race highlighted with
+"in 3h 43m" or "23 MTP"; next race comes from the header countdown (a late race stays next), else post times. "On the panel now" shows a picture in both modes, like the plane tracker's display mirror: the
 race board image, or the clock & weather screen redrawn from what the idle scenes recorded. Race settings apply live within ~1s; weather/clock/hardware settings need Restart.
 
 ## Data source (NYRA, no API)
@@ -86,12 +89,16 @@ race board image, or the clock & weather screen redrawn from what the idle scene
   div with a `title`, surface the next div; horses: `div[title="Current Odds"]`,
   `div[title="Morning Line Odds"]` ("ML 12/1"), program number in the row's `order-1` div.
 - Live odds ARE in the raw HTML (verified by Joe with Ctrl+U during a live Belmont card, Oct 1 2026).
+- Race tabs on the track page: `a[hx-get="/{track}/rdl/race/?race=N"]`, numbers only, no post times. Today's card
+  comes from each race's fragment. A track not racing today has no header badge (Saratoga, Oct 2 2026).
+- Verified live Oct 2 2026 (Belmont, 9 races): /rdl/race/ fragments, parse_race, auto track, today's card.
 - Polling etiquette (keep it gentle): idle, track page at most every 5 min; in the window, odds every
-  `poll_seconds` (20, minimum 10) and the track page once a minute. Don't make it faster.
+  `poll_seconds` (20, minimum 10) and the track page once a minute. Today's card: one fragment per race,
+  1s apart, once a day then every 30 min. Auto with no racing anywhere: both track pages every 5 min.
+  Don't make it faster.
 
 ## Not yet verified (check once hardware is running)
 
-- The /rdl/race/ fragment on the live site (fallback exists).
 - Saratoga's page layout matches Belmont's (same NYRA site; expected yes, confirm next summer).
 - How NYRA writes even money and other odd formats (unparseable odds show white).
 - What the header shows between races and after the last race (board should fall back to clock).

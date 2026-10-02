@@ -14,7 +14,7 @@ _SEC_PATH = os.path.join(_BASE, "config", "secrets.json")
 
 DEFAULT_CONFIG = {
     "racing": {
-        "track": "belmont",           # "saratoga" or "belmont"
+        "track": "auto",              # "auto" (whichever NYRA track races today), "saratoga" or "belmont"
         "view": "full",               # "full" (odds board) or "big_mtp"
         "race_window_minutes": 90,    # show the race board when next post is this close
         "page_seconds": 5,            # flip interval for fields over 10 horses
@@ -78,7 +78,7 @@ def reload():
     loc  = {**DEFAULT_CONFIG["location"], **cfg.get("location", {})}
     disp = {**DEFAULT_CONFIG["display"], **cfg.get("display", {})}
 
-    RACE_TRACK          = race["track"] if race["track"] in ("saratoga", "belmont") else "saratoga"
+    RACE_TRACK          = race["track"] if race["track"] in ("auto", "saratoga", "belmont") else "auto"
     RACE_VIEW           = race["view"] if race["view"] in ("full", "big_mtp") else "full"
     RACE_WINDOW_MINUTES = int(race["race_window_minutes"])
     RACE_PAGE_SECONDS   = max(2, int(race["page_seconds"]))

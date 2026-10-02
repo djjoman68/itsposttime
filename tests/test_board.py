@@ -83,6 +83,60 @@ class TestDesignRules(unittest.TestCase):
             self.assertIsNotNone(img.getbbox())
 
 
+def track_page(post_time, races=3, track="belmont"):
+    """Bare-bones NYRA track page: the header countdown (if any) and the race tabs."""
+    badge = (f'<span>Race 2 - </span><span class="mtp-badge" data-mtp-variant="header" '
+             f'data-post-time="{post_time}">5</span>') if post_time else ""
+    tabs = "".join(f'<a hx-get="/{track}/rdl/race/?race={n}">{n}</a>' for n in range(1, races + 1))
+    return f"<html><body><div>{badge}</div><nav>{tabs}</nav></body></html>"
+
+
+class TestTodaysCard(unittest.TestCase):
+    CARD = [{"race": "1", "post_time": "2026-10-02T13:10:00"},
+            {"race": "2", "post_time": "2026-10-02T13:40:00"},
+            {"race": "3", "post_time": "2026-10-02T14:10:00"}]
+
+    def test_racing_today(self):
+        day = datetime(2026, 10, 2).date()
+        self.assertTrue(nyra.racing_on(track_page("2026-10-02T13:10:00"), day))
+        self.assertFalse(nyra.racing_on(track_page("2026-10-03T13:10:00"), day))   # next racing day
+        self.assertFalse(nyra.racing_on(track_page(None), day))                    # dark track
+
+    def test_race_numbers(self):
+        self.assertEqual(nyra.race_numbers(track_page(None, races=10)), [str(n) for n in range(1, 11)])
+
+    def test_states_follow_the_header_countdown(self):
+        # Race 2 is late going off: still "next" even though its post time has passed
+        late = nyra.parse_post_time("2026-10-02T13:45:00")
+        self.assertEqual(nyra.card_states(self.CARD, "2", now=late), ["done", "next", "later"])
+
+    def test_states_fall_back_to_post_times(self):
+        t = nyra.parse_post_time
+        self.assertEqual(nyra.card_states(self.CARD, None, now=t("2026-10-02T13:30:00")), ["done", "next", "later"])
+        self.assertEqual(nyra.card_states(self.CARD, None, now=t("2026-10-02T18:00:00")), ["done"] * 3)
+
+    def test_auto_follows_the_track_racing_today_and_reads_its_card(self):
+        import config
+        from utilities import racefeed
+        post = (datetime.now(nyra.NYRA_TZ) + timedelta(minutes=1)).replace(tzinfo=None).isoformat(timespec="seconds")
+        pages = {nyra.track_page_url("saratoga"): track_page(None, track="saratoga"),
+                 nyra.track_page_url("belmont"): track_page(post)}
+        saved = config.reload, config.RACE_TRACK, racefeed.CARD_FETCH_GAP
+        config.reload, config.RACE_TRACK, racefeed.CARD_FETCH_GAP = (lambda: None), "auto", 0
+        try:
+            feed = racefeed.RaceFeed(start=False)
+            feed._get = lambda url: pages.get(url, PAGE)     # every race page is the sample race
+            feed._cycle()
+        finally:
+            config.reload, config.RACE_TRACK, racefeed.CARD_FETCH_GAP = saved
+        self.assertEqual(feed.track, "belmont")
+        self.assertEqual(len(feed.card), 3)
+        self.assertEqual(feed.card[0], {"race": "3", "post_time": "2026-10-01T15:12:00",
+                                        "distance": "1 1/16M", "surface": "Turf", "runners": 3})
+        self.assertEqual(feed.next_race, "2")
+        self.assertEqual(feed.race["track"], "belmont")
+
+
 class TestIdlePicture(unittest.TestCase):
     """The web UI's picture of the clock & weather screen."""
 
@@ -134,6 +188,7 @@ class TestDisplayLoop(unittest.TestCase):
         class FakeFeed:
             def __init__(self):
                 self.race, self.last_update, self.last_error = None, None, None
+                self.track, self.card, self.next_race = "belmont", [], None
 
             def refresh_now(self):
                 pass

@@ -19,12 +19,17 @@
   </div>
 
   <div class="section">
+    <div class="section-header" id="card-title">Today's card</div>
+    <div class="section-body single"><div class="card-wrap" id="card"><div class="hint">Loading…</div></div></div>
+  </div>
+
+  <div class="section">
     <div class="section-header">Quick controls</div>
     <div class="section-body">
       <div class="field">
         <label>Track</label>
         <div class="toggle" data-key="track">
-          <button data-val="saratoga">Saratoga</button><button data-val="belmont">Belmont</button>
+          <button data-val="auto">Auto</button><button data-val="saratoga">Saratoga</button><button data-val="belmont">Belmont</button>
         </div>
       </div>
       <div class="field">
@@ -33,7 +38,7 @@
           <button data-val="full">Full board</button><button data-val="big_mtp">Big MTP</button>
         </div>
       </div>
-      <div class="hint">Changes reach the panel within a few seconds.</div>
+      <div class="hint">Changes reach the panel within a few seconds. Auto follows whichever track is racing today, Saratoga first.</div>
     </div>
   </div>
 
@@ -67,6 +72,31 @@ function showFrame(alt) {
   img.src = `/board.png?t=${Date.now()}`;
 }
 
+// Today's card: every race with its post time, the next race highlighted
+let lastCard = null;
+function renderCard(s) {
+  const key = JSON.stringify([s.track, s.track_now, s.card]);
+  if (key === lastCard) return;
+  lastCard = key;
+  const name = TRACK_NAMES[s.track_now] || "";
+  document.getElementById("card-title").textContent = name ? `Today's card · ${name}` : "Today's card";
+  const box = document.getElementById("card");
+  if (!s.track_now) {
+    box.innerHTML = `<div class="hint">No racing at ${s.track === "auto" ? "Saratoga or Belmont" : TRACK_NAMES[s.track]} today.</div>`;
+    return;
+  }
+  if (!s.card || !s.card.length) {
+    box.innerHTML = `<div class="hint">No races listed for ${name} today.</div>`;
+    return;
+  }
+  const until = m => m >= 60 ? `in ${Math.floor(m / 60)}h ${m % 60}m` : `${m} MTP`;
+  const label = c => c.state === "done" ? "Off" : c.state === "next" ? `Next · ${until(c.mtp)}` : "";
+  box.innerHTML = `<table class="card"><thead><tr><th>Race</th><th>Post (ET)</th><th>Distance</th><th>Surface</th>
+    <th>Field</th><th></th></tr></thead><tbody>` + s.card.map(c => `<tr class="${c.state}">
+    <td class="num">${c.race}</td><td>${fmtPost(c.post_time).replace(" ET", "")}</td><td>${c.distance}</td>
+    <td>${c.surface}</td><td class="num">${c.runners}</td><td class="state">${label(c)}</td></tr>`).join("") + `</tbody></table>`;
+}
+
 async function refresh() {
   try {
     const r = await fetch("/api/status"); const d = await r.json();
@@ -82,7 +112,9 @@ async function refresh() {
       panel.innerHTML = '<div class="idle-note">No signal from the display</div>';
       details.innerHTML = ""; lastMode = null; return;
     }
-    const track = TRACK_NAMES[s.track] || s.track;
+    const track = s.track_now ? (TRACK_NAMES[s.track_now] || s.track_now) + (s.track === "auto" ? " (auto)" : "")
+                              : "No NYRA racing today";
+    renderCard(s);
     if (s.mode === "race") {
       ticker.textContent = `${track} · Race ${s.race} · Post ${fmtPost(s.post_time)}`;
       showFrame("Race board");

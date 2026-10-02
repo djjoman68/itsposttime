@@ -115,3 +115,22 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 pre.log { font-family: var(--mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
           padding: 12px; max-height: 70vh; overflow-y: auto; color: var(--ink); background: var(--paper); }
+
+/* Today's card */
+.card-wrap { overflow-x: auto; }
+table.card { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+table.card th { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+                text-align: left; padding: 0 8px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table.card td { padding: 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+table.card .num { text-align: right; width: 1%; }
+table.card th:first-child, table.card th:nth-child(5) { text-align: right; }
+table.card td.state { font-family: var(--serif); font-style: italic; color: var(--muted); }
+table.card tr.done td { color: var(--muted); }
+table.card tr.next td { background: var(--red-wash); color: var(--ink); font-weight: 600; }
+table.card tr.next td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+table.card tr.next td.state { color: var(--red-dark); font-style: normal; font-family: var(--display); letter-spacing: 1px; }
+@media (max-width: 600px) {
+  table.card { font-size: 13px; }
+  table.card th, table.card td { padding-left: 5px; padding-right: 5px; }
+  .toggle button { padding: 8px 11px; letter-spacing: 1px; }
+}

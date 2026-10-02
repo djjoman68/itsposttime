@@ -1,9 +1,12 @@
 """Reads race data from NYRA's public racing pages (no API, no login).
 
     current_race(html)  -> the race NYRA is currently counting down to
+    racing_on(html, d)  -> whether the track page is counting down to a race on day d
+    race_numbers(html)  -> the race numbers on the track page's race tabs (today's card)
     parse_race(html)    -> full detail for one race: post time, distance,
                            surface, and every horse's program number, odds, ML
 """
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -52,6 +55,51 @@ def current_race(html):
     if not digits:
         return None, None
     return digits, badge["data-post-time"]
+
+
+def racing_on(html, day):
+    """True if the track page is counting down to a race on `day` (an Eastern date).
+    A track with no racing that day has no countdown, or one for a later day."""
+    _, post_time = current_race(html)
+    return bool(post_time) and parse_post_time(post_time).date() == day
+
+
+def race_numbers(html):
+    """Race numbers from the track page's race tabs, e.g. ['1', '2', ... '9']."""
+    soup = BeautifulSoup(html, "html.parser")
+    nums = set()
+    for a in soup.find_all("a", attrs={"hx-get": True}):
+        m = re.search(r"/rdl/race/\?race=(\d+)", a["hx-get"])
+        if m:
+            nums.add(m.group(1))
+    return sorted(nums, key=int)
+
+
+def runners(race):
+    """Horses still in the race (scratches left out)."""
+    return [h for h in race["horses"] if not h["odds"].upper().startswith("SCR")]
+
+
+def card_states(card, next_race, now=None):
+    """Label each race on today's card 'done', 'next' or 'later'.
+
+    Uses the race NYRA's header is counting down to when known, since a race can
+    go off after its scheduled post time; otherwise falls back to the post times."""
+    nums = [c["race"] for c in card]
+    if next_race in nums:
+        n = int(next_race)
+        return ["done" if int(r) < n else "next" if int(r) == n else "later" for r in nums]
+    now = now or datetime.now(NYRA_TZ)
+    states, found = [], False
+    for c in card:
+        if parse_post_time(c["post_time"]) <= now:
+            states.append("done")
+        elif not found:
+            states.append("next")
+            found = True
+        else:
+            states.append("later")
+    return states
 
 
 def parse_race(html):

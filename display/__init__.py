@@ -9,6 +9,7 @@ from datetime import datetime
 
 import config
 from setup import frames
+from utilities import nyra
 from utilities.animator import Animator
 from utilities.idle_render import render_idle
 from utilities.racefeed import RaceFeed
@@ -123,13 +124,18 @@ class Display(
     @Animator.KeyFrame.add(frames.PER_SECOND * 2)
     def write_status(self, count):
         race = self._data[0] if self._data else None
+        card = list(self.feed.card)
+        states = nyra.card_states(card, self.feed.next_race)
         status = {
             "mode": "race" if race else "idle",
-            "track": config.RACE_TRACK,
+            "track": config.RACE_TRACK,          # the setting: auto, saratoga or belmont
+            "track_now": self.feed.track,        # the track being followed today, None if no racing
+            "card": [dict(c, state=st, mtp=nyra.minutes_to_post(c["post_time"]) if st == "next" else None)
+                     for c, st in zip(card, states)],
             "view": config.RACE_VIEW,
             "race": race["race"] if race else None,
             "post_time": race["post_time"] if race else None,
-            "runners": len([h for h in race["horses"] if not h["odds"].upper().startswith("SCR")]) if race else 0,
+            "runners": len(nyra.runners(race)) if race else 0,
             "feed_updated": self.feed.last_update.isoformat(timespec="seconds") if self.feed.last_update else None,
             "feed_error": self.feed.last_error,
             "written": datetime.now().isoformat(timespec="seconds"),

@@ -37,6 +37,7 @@ def idle_frame():
 
     class NoRaces:
         race, last_update, last_error = None, None, None
+        track, card, next_race = "belmont", [], None
 
         def refresh_now(self):
             pass
