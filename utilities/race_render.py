@@ -38,6 +38,8 @@ GLYPHS = {
     "G": ["011", "100", "101", "101", "011"], "L": ["100", "100", "100", "100", "111"],
     "N": ["1001", "1101", "1011", "1001", "1001"], "O": ["010", "101", "101", "101", "010"],
     "Y": ["101", "101", "010", "010", "010"], ":": ["0", "1", "0", "1", "0"],
+    # Small lowercase a/p after post times on the card screen (1:10p)
+    "a": ["000", "011", "101", "101", "011"], "p": ["000", "110", "101", "110", "100"],
 }
 
 
@@ -226,12 +228,13 @@ def render_big_mtp(race):
 
 CARD_ROWS = 4
 TRACK_LABELS = {"saratoga": "SARATOGA", "belmont": "BELMONT"}
+TRACK_COLORS = {"saratoga": (211, 58, 44), "belmont": (34, 139, 34)}   # Saratoga red, Belmont forest green
 
 
 def short_post(post_time_iso):
-    """'2026-10-02T13:10:00' -> '1:10' (12-hour, no AM/PM; the card is all one afternoon)."""
+    """'2026-10-02T13:10:00' -> '1:10p', '2026-10-02T11:30:00' -> '11:30a'."""
     h, m = int(post_time_iso[11:13]), post_time_iso[14:16]
-    return f"{h % 12 or 12}:{m}"
+    return f"{h % 12 or 12}:{m}{'p' if h >= 12 else 'a'}"
 
 
 def card_page_count(rows):
@@ -239,22 +242,23 @@ def card_page_count(rows):
 
 
 def render_card(track, rows, page=0):
-    """Today's card: header with the track name, then 4 races per page -
-    race number (blue), post time, distance, surface (DRT brown, TRF green).
+    """Today's card (columns: race x 0-6, time 10-30, distance 35-47, surface 53-63):
+    header with the track name (Saratoga red, Belmont forest green), then 4 races
+    per page - race number (blue), post time with a/p, distance, surface (DRT brown, TRF green).
     `rows` are the races still to come, next race first."""
     img = Image.new("RGB", (W, H), BLACK)
     d = ImageDraw.Draw(img)
-    draw_text(d, 1, 1, TRACK_LABELS.get(track, track.upper()), WHITE)
+    draw_text(d, 1, 1, TRACK_LABELS.get(track, track.upper()), TRACK_COLORS.get(track, WHITE))
     draw_text(d, W - 1 - text_width("TODAY"), 1, "TODAY", DIM)
 
     page = page % card_page_count(rows)
     for i, r in enumerate(rows[page * CARD_ROWS:(page + 1) * CARD_ROWS]):
         y = 8 + i * 6
         num = r["race"]
-        draw_text(d, 8 - text_width(num), y, num, BLUE)                    # right-aligned to x 7
+        draw_text(d, 7 - text_width(num), y, num, BLUE)                    # right-aligned to x 6
         post = short_post(r["post_time"])
-        draw_text(d, 28 - text_width(post), y, post, WHITE)                 # right-aligned to x 27
-        draw_text(d, 32, y, short_distance(r["distance"]), WHITE)
+        draw_text(d, 31 - text_width(post), y, post, WHITE)                 # right-aligned to x 30
+        draw_text(d, 35, y, short_distance(r["distance"]), WHITE)
         surf = short_surface(r["surface"])
         draw_text(d, W - text_width(surf), y, surf, {"TRF": GREEN, "DRT": BROWN}.get(surf, WHITE))
     return img

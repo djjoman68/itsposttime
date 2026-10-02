@@ -148,8 +148,12 @@ SAMPLE_CARD = [  # Belmont, Oct 2 2026
 
 class TestCardScreen(unittest.TestCase):
     def test_renders_four_races_a_page(self):
-        self.assertEqual(rr.short_post("2026-10-02T13:10:00"), "1:10")
-        self.assertEqual(rr.short_post("2026-10-02T12:05:00"), "12:05")
+        self.assertEqual(rr.short_post("2026-10-02T13:10:00"), "1:10p")
+        self.assertEqual(rr.short_post("2026-10-02T12:05:00"), "12:05p")
+        self.assertEqual(rr.short_post("2026-10-02T11:30:00"), "11:30a")
+        # Widest row stays in its columns: race 10 ends at x 6, "12:10p" spans x 10-30, distance starts at 35
+        self.assertEqual(rr.text_width("10"), 7)
+        self.assertEqual(rr.text_width("12:10p"), 21)
         self.assertEqual(rr.card_page_count(SAMPLE_CARD), 2)
         for page in (0, 1):
             img = rr.render_card("belmont", SAMPLE_CARD, page)
@@ -160,8 +164,10 @@ class TestCardScreen(unittest.TestCase):
 
     def test_track_names_fit(self):
         for name in rr.TRACK_LABELS.values():
-            self.assertTrue(all(c in rr.GLYPHS for c in name + "TODAY:"))
+            self.assertTrue(all(c in rr.GLYPHS for c in name + "TODAY:ap"))
             self.assertLess(rr.text_width(name) + 2 + rr.text_width("TODAY"), 63)
+        self.assertEqual(rr.render_card("belmont", SAMPLE_CARD).getpixel((2, 1)), rr.TRACK_COLORS["belmont"])
+        self.assertEqual(rr.render_card("saratoga", SAMPLE_CARD).getpixel((2, 1)), rr.TRACK_COLORS["saratoga"])
 
     def test_takes_turns_with_the_clock_and_skips_finished_races(self):
         import config

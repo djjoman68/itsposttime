@@ -65,9 +65,9 @@ Full board (64x32):
 Big MTP view: header "RACE 5   MTP" centered (race blue, MTP dim gray); MTP digits at 4x, centered below.
 
 Today's card screen (Joe's request, Oct 2026): on race days, when no race is within the window, the panel
-alternates clock & weather and the card, `card_seconds` (45) each; 0 = off. Header: track name white
-("BELMONT"/"SARATOGA"), "TODAY" dim gray. 4 races per page, races still to come only, next race first:
-race number blue (right-aligned), post time 12-hour no AM/PM, distance in furlongs, surface DRT brown / TRF
+alternates clock & weather and the card, `card_seconds` (45) each; 0 = off. Header: track name, "SARATOGA" in
+Saratoga red (211,58,44), "BELMONT" in forest green (34,139,34); "TODAY" dim gray. 4 races per page, races still to come only, next race first:
+race number blue (right-aligned), post time 12-hour with small lowercase a/p ("1:10p"), distance in furlongs, surface DRT brown / TRF
 green. More than 4: pages flip every `page_seconds`. Gone once the day's last race is off.
 
 MTP colors (both views): white above 10, yellow 4-10, red 3 and under. MTP rounds up and is computed on the
