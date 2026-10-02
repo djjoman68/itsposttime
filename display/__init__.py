@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from datetime import datetime
 
 import config
@@ -123,11 +124,12 @@ class Display(
 
     @Animator.KeyFrame.add(frames.PER_SECOND * 2)
     def write_status(self, count):
-        race = self._data[0] if self._data else None
+        shown = self._data[0] if self._data else None
+        race = shown if shown and "race" in shown else None
         card = list(self.feed.card)
         states = nyra.card_states(card, self.feed.next_race)
         status = {
-            "mode": "race" if race else "idle",
+            "mode": "race" if race else "card" if shown else "idle",
             "track": config.RACE_TRACK,          # the setting: auto, saratoga or belmont
             "track_now": self.feed.track,        # the track being followed today, None if no racing
             "card": [dict(c, state=st, mtp=nyra.minutes_to_post(c["post_time"]) if st == "next" else None)
@@ -142,7 +144,7 @@ class Display(
         }
         try:
             _atomic_write(STATUS_FILE, lambda p: open(p, "w").write(json.dumps(status)))
-            if race:
+            if shown:
                 frame = getattr(self, "last_race_image", None)
                 if frame is not None and frame is not self._last_frame:
                     _atomic_write(FRAME_FILE, lambda p: frame.save(p, format="PNG"))
@@ -161,9 +163,11 @@ class Display(
     @Animator.KeyFrame.add(frames.PER_SECOND * 1)
     def check_for_race(self, count):
         race = self.feed.race
-        new_data = [race] if race else []
+        card = None if race else self._card_screen()
+        new_data = [race] if race else [card] if card else []
         mode_changed = bool(new_data) != bool(self._data)
-        race_changed = bool(new_data and self._data) and new_data[0]["race"] != self._data[0]["race"]
+        # Card screen has no "race", so switching card <-> race board also clears the panel
+        race_changed = bool(new_data and self._data) and new_data[0].get("race") != self._data[0].get("race")
         self._data = new_data
         if mode_changed:
             # Switching between race board and clock: clear and let the scenes redraw
@@ -174,6 +178,16 @@ class Display(
             self._redraw_date = True
         elif race_changed:
             self.canvas.Clear()
+
+    def _card_screen(self):
+        """Today's card for the panel during its turn in the clock/card alternation, else None.
+        Only the races still to come, next race first; nothing once the day's racing is over."""
+        secs = config.CARD_SECONDS
+        if secs <= 0 or not self.feed.track or int(time.time() // secs) % 2 == 0:
+            return None
+        card = list(self.feed.card)
+        rows = [c for c, st in zip(card, nyra.card_states(card, self.feed.next_race)) if st != "done"]
+        return {"card": rows, "track": self.feed.track} if rows else None
 
     @Animator.KeyFrame.add(1)
     def sync(self, count):

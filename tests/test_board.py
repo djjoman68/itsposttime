@@ -137,6 +137,65 @@ class TestTodaysCard(unittest.TestCase):
         self.assertEqual(feed.race["track"], "belmont")
 
 
+SAMPLE_CARD = [  # Belmont, Oct 2 2026
+    {"race": "1", "post_time": "2026-10-02T13:10:00", "distance": "7F", "surface": "Dirt", "runners": 9},
+    {"race": "2", "post_time": "2026-10-02T13:43:00", "distance": "6 1/2F", "surface": "Turf", "runners": 7},
+    {"race": "3", "post_time": "2026-10-02T14:16:00", "distance": "6 1/2F", "surface": "Turf", "runners": 7},
+    {"race": "4", "post_time": "2026-10-02T14:49:00", "distance": "6F", "surface": "Dirt", "runners": 13},
+    {"race": "5", "post_time": "2026-10-02T15:23:00", "distance": "1 1/16M", "surface": "Turf", "runners": 16},
+]
+
+
+class TestCardScreen(unittest.TestCase):
+    def test_renders_four_races_a_page(self):
+        self.assertEqual(rr.short_post("2026-10-02T13:10:00"), "1:10")
+        self.assertEqual(rr.short_post("2026-10-02T12:05:00"), "12:05")
+        self.assertEqual(rr.card_page_count(SAMPLE_CARD), 2)
+        for page in (0, 1):
+            img = rr.render_card("belmont", SAMPLE_CARD, page)
+            self.assertEqual(img.size, (64, 32))
+            self.assertIsNotNone(img.getbbox())
+        # Page 2 has one race: nothing drawn below its row
+        self.assertIsNone(rr.render_card("belmont", SAMPLE_CARD, 1).crop((0, 14, 64, 32)).getbbox())
+
+    def test_track_names_fit(self):
+        for name in rr.TRACK_LABELS.values():
+            self.assertTrue(all(c in rr.GLYPHS for c in name + "TODAY:"))
+            self.assertLess(rr.text_width(name) + 2 + rr.text_width("TODAY"), 63)
+
+    def test_takes_turns_with_the_clock_and_skips_finished_races(self):
+        import config
+        import display
+
+        class Feed:
+            race, last_update, last_error = None, None, None
+            track, card, next_race = "belmont", SAMPLE_CARD, "3"
+
+            def refresh_now(self):
+                pass
+
+        display.RaceFeed = Feed
+        _use_sample_weather()
+        d = display.Display()
+        saved = config.CARD_SECONDS, display.time
+        try:
+            config.CARD_SECONDS = 45
+            display.time = type("Clock", (), {"time": staticmethod(lambda: 45.0)})    # card's turn
+            screen = d._card_screen()
+            self.assertEqual([r["race"] for r in screen["card"]], ["3", "4", "5"])
+            d.check_for_race(0)
+            d.race_board(0)
+            # 3 races fit on one page, so the panel shows exactly the card screen
+            self.assertEqual(d.canvas.img.tobytes(), rr.render_card("belmont", screen["card"], 0).tobytes())
+            display.time = type("Clock", (), {"time": staticmethod(lambda: 90.0)})    # clock's turn
+            self.assertIsNone(d._card_screen())
+            config.CARD_SECONDS = 0                                                    # turned off
+            display.time = type("Clock", (), {"time": staticmethod(lambda: 45.0)})
+            self.assertIsNone(d._card_screen())
+        finally:
+            config.CARD_SECONDS, display.time = saved
+
+
 class TestIdlePicture(unittest.TestCase):
     """The web UI's picture of the clock & weather screen."""
 

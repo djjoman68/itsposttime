@@ -26,6 +26,10 @@
       <div class="field"><label>Odds refresh (seconds)</label>
         <input type="number" min="10" max="120" data-path="config.racing.poll_seconds" data-type="int">
         <span class="hint">Minimum 10. 20 is gentle on NYRA's site.</span></div>
+      <div class="field"><label>Today's card on the panel (seconds)</label>
+        <input type="number" min="0" max="600" data-path="config.racing.card_seconds" data-type="int">
+        <span class="hint">On race days, before the race board starts, the panel takes turns showing clock &amp; weather
+          and the races still to come, this long each. 0 turns it off.</span></div>
     </div>
   </div>
 

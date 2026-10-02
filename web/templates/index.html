@@ -119,6 +119,10 @@ async function refresh() {
       ticker.textContent = `${track} · Race ${s.race} · Post ${fmtPost(s.post_time)}`;
       showFrame("Race board");
       details.innerHTML = `<b>Race ${s.race}</b> · ${s.runners} running · view: ${s.view === "big_mtp" ? "Big MTP" : "Full board"}`;
+    } else if (s.mode === "card") {
+      ticker.textContent = `${track} · No race within the window — showing today's card`;
+      showFrame("Today's card");
+      details.innerHTML = "";
     } else {
       ticker.textContent = `${track} · No race within the window — showing clock & weather`;
       showFrame("Clock and weather");

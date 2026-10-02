@@ -34,6 +34,10 @@ GLYPHS = {
     "R": ["110", "101", "110", "101", "101"], "S": ["011", "100", "010", "001", "110"],
     "T": ["111", "010", "010", "010", "010"], "U": ["101", "101", "101", "101", "111"],
     "W": ["10001", "10001", "10101", "11011", "10001"],
+    # Track names and "TODAY" on the card screen. O is rounded so it doesn't read as 0.
+    "G": ["011", "100", "101", "101", "011"], "L": ["100", "100", "100", "100", "111"],
+    "N": ["1001", "1101", "1011", "1001", "1001"], "O": ["010", "101", "101", "101", "010"],
+    "Y": ["101", "101", "010", "010", "010"], ":": ["0", "1", "0", "1", "0"],
 }
 
 
@@ -217,6 +221,42 @@ def render_big_mtp(race):
     mtp = race["mtp"]
     m = str(min(mtp, 99))
     draw_text(d, (W - text_width(m, 4)) // 2, 9, m, mtp_color(mtp), scale=4)
+    return img
+
+
+CARD_ROWS = 4
+TRACK_LABELS = {"saratoga": "SARATOGA", "belmont": "BELMONT"}
+
+
+def short_post(post_time_iso):
+    """'2026-10-02T13:10:00' -> '1:10' (12-hour, no AM/PM; the card is all one afternoon)."""
+    h, m = int(post_time_iso[11:13]), post_time_iso[14:16]
+    return f"{h % 12 or 12}:{m}"
+
+
+def card_page_count(rows):
+    return max(1, -(-len(rows) // CARD_ROWS))
+
+
+def render_card(track, rows, page=0):
+    """Today's card: header with the track name, then 4 races per page -
+    race number (blue), post time, distance, surface (DRT brown, TRF green).
+    `rows` are the races still to come, next race first."""
+    img = Image.new("RGB", (W, H), BLACK)
+    d = ImageDraw.Draw(img)
+    draw_text(d, 1, 1, TRACK_LABELS.get(track, track.upper()), WHITE)
+    draw_text(d, W - 1 - text_width("TODAY"), 1, "TODAY", DIM)
+
+    page = page % card_page_count(rows)
+    for i, r in enumerate(rows[page * CARD_ROWS:(page + 1) * CARD_ROWS]):
+        y = 8 + i * 6
+        num = r["race"]
+        draw_text(d, 8 - text_width(num), y, num, BLUE)                    # right-aligned to x 7
+        post = short_post(r["post_time"])
+        draw_text(d, 28 - text_width(post), y, post, WHITE)                 # right-aligned to x 27
+        draw_text(d, 32, y, short_distance(r["distance"]), WHITE)
+        surf = short_surface(r["surface"])
+        draw_text(d, W - text_width(surf), y, surf, {"TRF": GREEN, "DRT": BROWN}.get(surf, WHITE))
     return img
 
 

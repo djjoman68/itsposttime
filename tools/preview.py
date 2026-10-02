@@ -1,4 +1,4 @@
-"""Save an LED-style picture of the race screens and the clock & weather screen, no panel needed.
+"""Save an LED-style picture of the race screens, clock & weather, and today's card, no panel needed.
 
     python3 tools/preview.py                     # uses the sample page in tests/fixtures
     python3 tools/preview.py saved_page.html     # or a page saved from nyra.com (Ctrl+S, HTML only)
@@ -57,6 +57,11 @@ def idle_frame():
 
 
 frames.append(("Clock & weather (sample weather)", idle_frame()))
+
+from test_board import SAMPLE_CARD                                 # noqa: E402  (path added by idle_frame)
+from utilities.race_render import render_card, card_page_count    # noqa: E402
+for p in range(card_page_count(SAMPLE_CARD)):
+    frames.append((f"Today's card (sample), page {p + 1}", render_card("belmont", SAMPLE_CARD, p)))
 
 pad, cap = 20, 26
 tiles = [(t, led_preview(img, dot=8)) for t, img in frames]

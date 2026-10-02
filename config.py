@@ -19,6 +19,7 @@ DEFAULT_CONFIG = {
         "race_window_minutes": 90,    # show the race board when next post is this close
         "page_seconds": 5,            # flip interval for fields over 10 horses
         "poll_seconds": 20,           # how often to re-read odds during the race window
+        "card_seconds": 45,           # before the window on race days, alternate clock and today's card; 0 = off
     },
     "location": {
         "temperature_location": "",       # "lat,lon" - set in the web UI
@@ -66,7 +67,7 @@ def ensure_files():
 
 def reload():
     """Reload config from disk - call after the web UI saves changes."""
-    global RACE_TRACK, RACE_VIEW, RACE_WINDOW_MINUTES, RACE_PAGE_SECONDS, RACE_POLL_SECONDS
+    global RACE_TRACK, RACE_VIEW, RACE_WINDOW_MINUTES, RACE_PAGE_SECONDS, RACE_POLL_SECONDS, CARD_SECONDS
     global TEMPERATURE_LOCATION, TEMPERATURE_UNITS, CLOCK_FORMAT
     global BRIGHTNESS, BRIGHTNESS_NIGHT, NIGHT_BRIGHTNESS, NIGHT_START, NIGHT_END
     global GPIO_SLOWDOWN, HAT_PWM_ENABLED, LED_RGB_SEQUENCE
@@ -83,6 +84,7 @@ def reload():
     RACE_WINDOW_MINUTES = int(race["race_window_minutes"])
     RACE_PAGE_SECONDS   = max(2, int(race["page_seconds"]))
     RACE_POLL_SECONDS   = max(10, int(race["poll_seconds"]))   # never hammer NYRA
+    CARD_SECONDS        = max(0, int(race["card_seconds"]))
 
     TEMPERATURE_LOCATION = loc["temperature_location"]
     TEMPERATURE_UNITS    = loc["temperature_units"]
