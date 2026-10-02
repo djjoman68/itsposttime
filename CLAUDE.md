@@ -99,6 +99,13 @@ race board image, or the clock & weather screen redrawn from what the idle scene
 - Race tabs on the track page: `a[hx-get="/{track}/rdl/race/?race=N"]`, numbers only, no post times. Today's card
   comes from each race's fragment. A track not racing today has no header badge (Saratoga, Oct 2 2026).
 - Verified live Oct 2 2026 (Belmont, 9 races): /rdl/race/ fragments, parse_race, auto track, today's card.
+- Race lifecycle (watched Belmont races 1-2, Oct 2 2026): countdown sits at 0 from post time; nothing marks
+  the off. ~2 min after the off NYRA rewrites the race's post time to the actual off time WITH seconds
+  (13:43:00 -> 13:45:20) and posts final odds. ~10 min later (official) the race page drops its countdown and
+  the header moves to the next race within ~1 min. The board moves to the next race on the card at the
+  rewrite (`nyra.went_off`), or failing that when the countdown goes (`nyra.race_finished`). Delays move post
+  to another whole minute, so they don't trigger it. An "OFF" display was tried and dropped (Joe's call): the
+  site never says OFF and the rewrite comes too late to be useful as one.
 - Polling etiquette (keep it gentle): idle, track page at most every 5 min; in the window, odds every
   `poll_seconds` (20, minimum 10) and the track page once a minute. Today's card: one fragment per race,
   1s apart, once a day then every 30 min. Auto with no racing anywhere: both track pages every 5 min.
@@ -106,9 +113,9 @@ race board image, or the clock & weather screen redrawn from what the idle scene
 
 ## Not yet verified (check once hardware is running)
 
+- What the header shows after the last race (board should fall back to clock). Between races: see above.
 - Saratoga's page layout matches Belmont's (same NYRA site; expected yes, confirm next summer).
 - How NYRA writes even money and other odd formats (unparseable odds show white).
-- What the header shows between races and after the last race (board should fall back to clock).
 - Colors on the real panel: brown DRT, #15 khaki badge, single-LED favorite dot.
 
 ## Working rules

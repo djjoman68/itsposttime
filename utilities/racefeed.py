@@ -7,6 +7,10 @@ Polling is deliberately gentle:
     30 minutes, one race page per second
   - with the track on "auto" it checks Saratoga, then Belmont, until one is racing
     today, and sticks with that track for the rest of the day
+Moving on: NYRA's header stays on a race until it is official, about 10 minutes after
+it is run. The board moves to the next race on the card as soon as NYRA rewrites the
+race's post time to its off time (about when the race finishes), or failing that when
+the race page drops its countdown. See nyra.py for the sequence.
 The display thread never waits on the network; it just reads .race, .track and .card.
 """
 import logging
@@ -51,6 +55,9 @@ class RaceFeed:
         self._auto = (None, None)                 # (day, track) chosen by "auto"
         self._card_key = (None, None)             # (track, day) the card belongs to
         self._card_checked = 0.0
+        self._day_key = (None, None)              # (track, day) the two below belong to
+        self._scheduled = {}                      # race -> first post time seen (before any rewrite)
+        self.finished = set()                     # races run today; the board has moved past them
         if start:
             threading.Thread(target=self._loop, daemon=True, name="racefeed").start()
 
@@ -118,11 +125,22 @@ class RaceFeed:
                 log.warning(f"card: race {num} fetch failed: {e}")
                 race = None
             if race:
+                self._scheduled.setdefault(race["race"], race["post_time"])
                 card.append({"race": race["race"], "post_time": race["post_time"], "distance": race["distance"],
                              "surface": race["surface"], "runners": len(nyra.runners(race))})
             time.sleep(CARD_FETCH_GAP)
         if card or self._card_key != key:
             self.card, self._card_key = card, key
+
+    def _next_unfinished(self, race_num, post_time):
+        """NYRA's header lags behind: if it still points at a race that has been run,
+        use the next race on the card instead. (None, None) when the card is done."""
+        if race_num not in self.finished:
+            return race_num, post_time
+        for c in self.card:
+            if int(c["race"]) > int(race_num) and c["race"] not in self.finished:
+                return c["race"], c["post_time"]
+        return None, None
 
     def _cycle(self):
         """One check. Returns how many seconds to wait before the next one."""
@@ -137,12 +155,16 @@ class RaceFeed:
             self.card, self.next_race = [], None
             return IDLE_CHECK_SECONDS
 
+        day_key = (track, _today())
+        if day_key != self._day_key:
+            self._day_key, self._scheduled, self.finished = day_key, {}, set()
         self._refresh_card(track)
 
         cached_track, race_num, post_time, checked = self._current
         if cached_track != track or race_num is None or time.time() - checked >= HEADER_CHECK_SECONDS:
             race_num, post_time = nyra.current_race(self._track_page(track))
             self._current = (track, race_num, post_time, time.time())
+        race_num, post_time = self._next_unfinished(race_num, post_time)
         # After the last race the header may already count down to the next racing day
         today_post = bool(post_time) and nyra.parse_post_time(post_time).date() == _today()
         self.next_race = race_num if today_post else None
@@ -157,14 +179,22 @@ class RaceFeed:
             # sleep until the window opens, but re-check at least every 5 minutes
             return max(30, min(IDLE_CHECK_SECONDS, (mtp - window) * 60))
 
-        race = None
+        race, official = None, False
         for url in (nyra.race_fragment_url(track, race_num), nyra.race_page_url(track, race_num)):
             try:
-                race = nyra.parse_race(self._get(url))
+                html = self._get(url)
+                race = nyra.parse_race(html)
+                official = race is None and nyra.race_finished(html)
             except requests.RequestException as e:
                 log.warning(f"fetch failed {url}: {e}")
-            if race:
+            if race or official:
                 break
+        if race:
+            self._scheduled.setdefault(race_num, race["post_time"])
+        if official or (race and nyra.went_off(self._scheduled.get(race_num), race["post_time"])):
+            log.info(f"race {race_num} has been run; moving to the next race")
+            self.finished.add(race_num)
+            return 1                             # pick up the next race right away
         if race is None:
             raise RuntimeError("race page layout not recognized")
 

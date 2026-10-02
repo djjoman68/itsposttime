@@ -4,6 +4,7 @@ No LED panel or internet needed: a fake rgbmatrix module stands in for the
 panel, and a saved sample page stands in for nyra.com.
 """
 import os
+import re
 import sys
 import unittest
 from datetime import datetime, timedelta
@@ -135,6 +136,81 @@ class TestTodaysCard(unittest.TestCase):
                                         "distance": "1 1/16M", "surface": "Turf", "runners": 3})
         self.assertEqual(feed.next_race, "2")
         self.assertEqual(feed.race["track"], "belmont")
+
+
+def race_page(race, post_time, official=False):
+    """The sample race page as race `race` with post time `post_time`; official = countdown gone."""
+    html = PAGE.replace("2026-10-01T15:12:00", post_time).replace(">Race 3</header>", f">Race {race}</header>")
+    if official:
+        html = re.sub(r'<span class="mtp-badge[^>]*data-mtp-variant="default"[^>]*>[^<]*</span>', "", html)
+    return html
+
+
+class TestMovingOn(unittest.TestCase):
+    """After a race is run the board moves to the next race without waiting ~10 minutes
+    for NYRA to make it official (sequence watched live at Belmont, Oct 2 2026)."""
+
+    def test_went_off(self):
+        t = nyra.parse_post_time
+        now = t("2026-10-02T13:47:08")
+        self.assertTrue(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:45:20", now=now))   # off-time rewrite
+        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:43:00", now=now))  # unchanged
+        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:48:00", now=now))  # delayed, whole minute
+        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:49:20", now=now))  # not reached yet
+        self.assertFalse(nyra.went_off(None, "2026-10-02T13:45:20", now=now))                   # never saw the schedule
+
+    def test_race_finished(self):
+        self.assertFalse(nyra.race_finished(PAGE))
+        self.assertTrue(nyra.race_finished(race_page("3", "2026-10-01T15:12:00", official=True)))
+        self.assertFalse(nyra.race_finished("<html>maintenance</html>"))
+
+    def _feed(self, pages):
+        import config
+        from utilities import racefeed
+        self._saved = config.reload, config.RACE_TRACK, racefeed.CARD_FETCH_GAP
+        config.reload, config.RACE_TRACK, racefeed.CARD_FETCH_GAP = (lambda: None), "belmont", 0
+        feed = racefeed.RaceFeed(start=False)
+        feed._get = lambda url: pages[url]
+        return feed
+
+    def tearDown(self):
+        import config
+        from utilities import racefeed
+        if hasattr(self, "_saved"):
+            config.reload, config.RACE_TRACK, racefeed.CARD_FETCH_GAP = self._saved
+
+    def _day(self):
+        now = datetime.now(nyra.NYRA_TZ).replace(tzinfo=None)
+        iso = lambda dt: dt.isoformat(timespec="seconds")
+        post3 = now.replace(second=0) - timedelta(minutes=3)
+        track = (f'<html><div><span>Race 3 - </span><span class="mtp-badge" data-mtp-variant="header" '
+                 f'data-post-time="{iso(post3)}">0</span></div>'
+                 '<a hx-get="/belmont/rdl/race/?race=3">3</a><a hx-get="/belmont/rdl/race/?race=4">4</a></html>')
+        pages = {nyra.track_page_url("belmont"): track,
+                 nyra.race_fragment_url("belmont", "3"): race_page("3", iso(post3)),
+                 nyra.race_fragment_url("belmont", "4"): race_page("4", iso(post3 + timedelta(minutes=30)))}
+        return pages, post3, iso
+
+    def test_moves_on_when_nyra_posts_the_off_time(self):
+        pages, post3, iso = self._day()
+        feed = self._feed(pages)
+        feed._cycle()
+        self.assertEqual(feed.race["race"], "3")
+        # ~2 minutes after the off NYRA rewrites post time to the off time; header still says race 3
+        pages[nyra.race_fragment_url("belmont", "3")] = race_page("3", iso(post3 + timedelta(seconds=97)))
+        self.assertEqual(feed._cycle(), 1)
+        self.assertEqual(feed.finished, {"3"})
+        feed._cycle()
+        self.assertEqual((feed.race["race"], feed.next_race), ("4", "4"))
+
+    def test_moves_on_when_the_race_is_official(self):
+        pages, post3, iso = self._day()
+        feed = self._feed(pages)
+        feed._cycle()
+        pages[nyra.race_fragment_url("belmont", "3")] = race_page("3", iso(post3), official=True)
+        self.assertEqual(feed._cycle(), 1)
+        feed._cycle()
+        self.assertEqual(feed.race["race"], "4")
 
 
 SAMPLE_CARD = [  # Belmont, Oct 2 2026

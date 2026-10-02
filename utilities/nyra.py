@@ -5,6 +5,17 @@
     race_numbers(html)  -> the race numbers on the track page's race tabs (today's card)
     parse_race(html)    -> full detail for one race: post time, distance,
                            surface, and every horse's program number, odds, ML
+    went_off(...)       -> whether NYRA has rewritten a race's post time to its actual off time
+    race_finished(html) -> whether a race page has dropped its countdown (race official)
+
+How NYRA's pages move through a race (watched live, Belmont races 1-2, Oct 2 2026):
+  post time    countdown reaches 0 and stays there; nothing marks the start
+  ~2 min after the off (about when the race finishes)
+               the race's post time is rewritten to the actual off time, with
+               seconds (1:43:00 -> 1:45:20); final odds post at the same time
+  ~10 min later (official)
+               the countdown disappears from the race page; the header moves to
+               the next race within about a minute
 """
 import re
 from datetime import datetime
@@ -100,6 +111,24 @@ def card_states(card, next_race, now=None):
         else:
             states.append("later")
     return states
+
+
+def went_off(scheduled_post, post_now, now=None):
+    """True once NYRA has rewritten a race's post time to the time it actually went off.
+    A delay before the off moves post to another whole minute (1:48:00); the off time
+    has seconds (1:45:20) and is already in the past."""
+    if not scheduled_post or post_now == scheduled_post or post_now.endswith(":00"):
+        return False
+    return parse_post_time(post_now) <= (now or datetime.now(NYRA_TZ))
+
+
+def race_finished(html):
+    """True if a race page still lists its horses but has dropped its countdown,
+    which NYRA does once the race is official."""
+    soup = BeautifulSoup(html, "html.parser")
+    has_horses = soup.find("div", attrs={"title": "Current Odds"}) is not None
+    has_countdown = soup.find("span", class_="mtp-badge", attrs={"data-mtp-variant": "default"}) is not None
+    return has_horses and not has_countdown
 
 
 def parse_race(html):
