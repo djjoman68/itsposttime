@@ -5,25 +5,26 @@
     race_numbers(html)  -> the race numbers on the track page's race tabs (today's card)
     parse_race(html)    -> full detail for one race: post time, distance,
                            surface, and every horse's program number, odds, ML
-    went_off(...)       -> whether NYRA has rewritten a race's post time to its actual off time
+    odds_live(race)     -> whether betting has opened on a race (odds moved off the morning line)
     race_finished(html) -> whether a race page has dropped its countdown (race official)
 
-How NYRA's pages move through a race (watched live, Belmont races 1-2, Oct 2 2026):
+How NYRA's pages move through a race (watched live, Belmont races 1-4, Oct 2 2026):
+  all day      later races show odds equal to the morning line: betting on a race
+               only opens once the race before it is over
   post time    countdown reaches 0 and stays there; nothing marks the start
-  ~2 min after the off (about when the race finishes)
-               the race's post time is rewritten to the actual off time, with
-               seconds (1:43:00 -> 1:45:20); final odds post at the same time.
-               It is written after the fact, so it is already in the past when
-               it first appears.
-  delays       post time moves later ahead of time (race 3: 2:16 -> 2:31:48);
-               a delayed time can pass while the horses wait, so "in the past"
-               alone doesn't mean the race was run
-  ~10 min later (official)
+  ~2 min after the off
+               the post time is rewritten to the actual off time (1:43:00 -> 1:45:20).
+               Not used: during a delay NYRA also shows passing post times
+               (race 3, 2:16 -> 2:31:48), and the board once moved on too early.
+  ~5-7 min after the off
+               the NEXT race's odds go live (race 4 at ~2:38:30, race 3 off 2:31:48).
+               The board moves to the next race here (Joe's call: surest signal).
+  ~10 min after the off (official)
                the countdown disappears from the race page; the header moves to
                the next race within about a minute
 """
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
@@ -118,19 +119,11 @@ def card_states(card, next_race, now=None):
     return states
 
 
-OFF_TIME_LAG = timedelta(seconds=45)   # off times appeared 1:48-2:40 after the fact
-
-
-def went_off(scheduled_post, post_now, first_seen):
-    """True once NYRA has rewritten a race's post time to the time it actually went off.
-
-    `first_seen` is when the board first saw `post_now`. The off time is written after
-    the fact, so it is already well in the past when it first appears. A delay sets a new
-    post time ahead of time, still in the future when first seen, even if it then passes
-    while the horses wait (Belmont race 3, Oct 2 2026)."""
-    if not scheduled_post or post_now == scheduled_post or post_now.endswith(":00"):
-        return False
-    return parse_post_time(post_now) <= first_seen - OFF_TIME_LAG
+def odds_live(race):
+    """True once betting has opened on a race: until then NYRA shows every horse at its
+    morning line. Two horses off their ML is enough (race 4 went from 0 to 10 of 12 at once)."""
+    moved = [h for h in runners(race) if h["ml"] and h["odds"] != h["ml"]]
+    return len(moved) >= 2
 
 
 def race_finished(html):

@@ -8,9 +8,9 @@ Polling is deliberately gentle:
   - with the track on "auto" it checks Saratoga, then Belmont, until one is racing
     today, and sticks with that track for the rest of the day
 Moving on: NYRA's header stays on a race until it is official, about 10 minutes after
-it is run. The board moves to the next race on the card as soon as NYRA rewrites the
-race's post time to its off time (about when the race finishes), or failing that when
-the race page drops its countdown. See nyra.py for the sequence.
+it is run. Betting on the next race opens once a race is over, so after post time the
+board checks the next race every 40 seconds and moves on as soon as its odds go live
+(or when the race page drops its countdown, if that comes first). See nyra.py.
 The display thread never waits on the network; it just reads .race, .track and .card.
 """
 import logging
@@ -31,6 +31,7 @@ HEADER_CHECK_SECONDS = 60     # in the race window, re-check which race is next 
 ERROR_RETRY_SECONDS = 60
 CARD_REFRESH_SECONDS = 1800   # post times can move; re-read the card every 30 minutes
 CARD_FETCH_GAP = 1.0          # pause between race pages while reading the card
+NEXT_RACE_CHECK_SECONDS = 40  # after post time, how often to look for live odds on the next race
 AUTO_TRACKS = ("saratoga", "belmont")   # Saratoga first: its summer meet takes priority
 
 
@@ -56,8 +57,8 @@ class RaceFeed:
         self._card_key = (None, None)             # (track, day) the card belongs to
         self._card_checked = 0.0
         self._day_key = (None, None)              # (track, day) the two below belong to
-        self._scheduled = {}                      # race -> first post time seen (before any rewrite)
-        self._post_seen = {}                      # race -> (latest post time, when it first appeared)
+        self._last_post = {}                      # race -> post time last seen (changes are logged)
+        self._next_checked = 0.0                  # last look at the next race's odds
         self.finished = set()                     # races run today; the board has moved past them
         if start:
             threading.Thread(target=self._loop, daemon=True, name="racefeed").start()
@@ -126,7 +127,6 @@ class RaceFeed:
                 log.warning(f"card: race {num} fetch failed: {e}")
                 race = None
             if race:
-                self._scheduled.setdefault(race["race"], race["post_time"])
                 card.append({"race": race["race"], "post_time": race["post_time"], "distance": race["distance"],
                              "surface": race["surface"], "runners": len(nyra.runners(race))})
             time.sleep(CARD_FETCH_GAP)
@@ -143,6 +143,23 @@ class RaceFeed:
                 return c["race"], c["post_time"]
         return None, None
 
+    def _next_race_betting(self, track, race_num, post_time):
+        """Once a race is past post time, look every NEXT_RACE_CHECK_SECONDS for live odds
+        on the next race. Betting on it opens only after this race is over, so it can't be
+        fooled by a delay."""
+        if nyra.minutes_to_post(post_time) > 0 or time.time() - self._next_checked < NEXT_RACE_CHECK_SECONDS:
+            return False
+        nxt = next((c["race"] for c in self.card if int(c["race"]) > int(race_num)), None)
+        if nxt is None:
+            return False                         # last race: follow NYRA's header instead
+        self._next_checked = time.time()
+        try:
+            nxt_race = nyra.parse_race(self._get(nyra.race_fragment_url(track, nxt)))
+        except requests.RequestException as e:
+            log.warning(f"next race {nxt} fetch failed: {e}")
+            return False
+        return bool(nxt_race) and nyra.odds_live(nxt_race)
+
     def _cycle(self):
         """One check. Returns how many seconds to wait before the next one."""
         config.reload()
@@ -158,7 +175,7 @@ class RaceFeed:
 
         day_key = (track, _today())
         if day_key != self._day_key:
-            self._day_key, self._scheduled, self._post_seen, self.finished = day_key, {}, {}, set()
+            self._day_key, self._last_post, self.finished = day_key, {}, set()
         self._refresh_card(track)
 
         cached_track, race_num, post_time, checked = self._current
@@ -190,17 +207,12 @@ class RaceFeed:
                 log.warning(f"fetch failed {url}: {e}")
             if race or official:
                 break
-        went_off = False
         if race:
-            self._scheduled.setdefault(race_num, race["post_time"])
-            seen = self._post_seen.get(race_num)
-            if seen is None or seen[0] != race["post_time"]:
-                if seen:
-                    log.info(f"race {race_num} post time {seen[0][11:]} -> {race['post_time'][11:]}")
-                seen = (race["post_time"], datetime.now(nyra.NYRA_TZ))
-                self._post_seen[race_num] = seen
-            went_off = nyra.went_off(self._scheduled.get(race_num), race["post_time"], seen[1])
-        if official or went_off:
+            last = self._last_post.get(race_num)
+            if last and last != race["post_time"]:
+                log.info(f"race {race_num} post time {last[11:]} -> {race['post_time'][11:]}")
+            self._last_post[race_num] = race["post_time"]
+        if official or (race and self._next_race_betting(track, race_num, race["post_time"])):
             log.info(f"race {race_num} has been run; moving to the next race")
             self.finished.add(race_num)
             return 1                             # pick up the next race right away

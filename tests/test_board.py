@@ -127,6 +127,7 @@ class TestTodaysCard(unittest.TestCase):
         try:
             feed = racefeed.RaceFeed(start=False)
             feed._get = lambda url: pages.get(url, PAGE)     # every race page is the sample race
+            feed._next_race_betting = lambda *args: False    # (so the "next race" isn't betting yet)
             feed._cycle()
         finally:
             config.reload, config.RACE_TRACK, racefeed.CARD_FETCH_GAP = saved
@@ -138,29 +139,26 @@ class TestTodaysCard(unittest.TestCase):
         self.assertEqual(feed.race["track"], "belmont")
 
 
-def race_page(race, post_time, official=False):
-    """The sample race page as race `race` with post time `post_time`; official = countdown gone."""
+def race_page(race, post_time, official=False, betting=True):
+    """The sample race page as race `race` with post time `post_time`.
+    official: countdown gone. betting=False: every horse still at its morning line."""
     html = PAGE.replace("2026-10-01T15:12:00", post_time).replace(">Race 3</header>", f">Race {race}</header>")
     if official:
         html = re.sub(r'<span class="mtp-badge[^>]*data-mtp-variant="default"[^>]*>[^<]*</span>', "", html)
+    if not betting:
+        html = re.sub(r'(<div title="Current Odds">)(?!SCR)[^<]*(</div><div title="Morning Line Odds">ML ([^<]*)</div>)',
+                      r"\g<1>\g<3>\g<2>", html)
     return html
 
 
 class TestMovingOn(unittest.TestCase):
-    """After a race is run the board moves to the next race without waiting ~10 minutes
-    for NYRA to make it official (sequence watched live at Belmont, Oct 2 2026)."""
+    """After a race is run the board moves on as soon as betting opens on the next race,
+    instead of waiting ~10 minutes for NYRA to make it official (watched live at Belmont,
+    Oct 2 2026: race 4's odds went live ~6 minutes after race 3 went off)."""
 
-    def test_went_off(self):
-        t = nyra.parse_post_time
-        seen = t("2026-10-02T13:47:08")   # when the board first saw the new post time
-        self.assertTrue(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:45:20", seen))    # off-time rewrite
-        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:43:00", seen))   # unchanged
-        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:48:00", seen))   # delayed, whole minute
-        self.assertFalse(nyra.went_off(None, "2026-10-02T13:45:20", seen))                    # never saw the schedule
-        # Delay (race 3): new post time set ahead of time; it passing later doesn't mean the race was run
-        self.assertFalse(nyra.went_off("2026-10-02T14:16:00", "2026-10-02T14:29:48", t("2026-10-02T14:27:30")))
-        # ...but the off time, written after the fact, does
-        self.assertTrue(nyra.went_off("2026-10-02T14:16:00", "2026-10-02T14:31:48", t("2026-10-02T14:34:22")))
+    def test_odds_live(self):
+        self.assertTrue(nyra.odds_live(nyra.parse_race(PAGE)))
+        self.assertFalse(nyra.odds_live(nyra.parse_race(race_page("4", "2026-10-01T15:42:00", betting=False))))
 
     def test_race_finished(self):
         self.assertFalse(nyra.race_finished(PAGE))
@@ -191,16 +189,23 @@ class TestMovingOn(unittest.TestCase):
                  '<a hx-get="/belmont/rdl/race/?race=3">3</a><a hx-get="/belmont/rdl/race/?race=4">4</a></html>')
         pages = {nyra.track_page_url("belmont"): track,
                  nyra.race_fragment_url("belmont", "3"): race_page("3", iso(post3)),
-                 nyra.race_fragment_url("belmont", "4"): race_page("4", iso(post3 + timedelta(minutes=30)))}
+                 nyra.race_fragment_url("belmont", "4"): race_page("4", iso(post3 + timedelta(minutes=30)),
+                                                                   betting=False)}
         return pages, post3, iso
 
-    def test_moves_on_when_nyra_posts_the_off_time(self):
+    def test_moves_on_when_betting_opens_on_the_next_race(self):
         pages, post3, iso = self._day()
         feed = self._feed(pages)
         feed._cycle()
         self.assertEqual(feed.race["race"], "3")
-        # ~2 minutes after the off NYRA rewrites post time to the off time; header still says race 3
+        # Post time changes (a delay, or NYRA writing the off time) don't move the board on
         pages[nyra.race_fragment_url("belmont", "3")] = race_page("3", iso(post3 + timedelta(seconds=97)))
+        feed._next_checked = 0
+        feed._cycle()
+        self.assertEqual((feed.race["race"], feed.finished), ("3", set()))
+        # Race 4's odds go live: race 3 is over
+        pages[nyra.race_fragment_url("belmont", "4")] = race_page("4", iso(post3 + timedelta(minutes=30)))
+        feed._next_checked = 0
         self.assertEqual(feed._cycle(), 1)
         self.assertEqual(feed.finished, {"3"})
         feed._cycle()
