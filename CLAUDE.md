@@ -103,8 +103,9 @@ race board image, or the clock & weather screen redrawn from what the idle scene
   the off. ~2 min after the off NYRA rewrites the race's post time to the actual off time WITH seconds
   (13:43:00 -> 13:45:20) and posts final odds. ~10 min later (official) the race page drops its countdown and
   the header moves to the next race within ~1 min. The board moves to the next race on the card at the
-  rewrite (`nyra.went_off`), or failing that when the countdown goes (`nyra.race_finished`). Delays move post
-  to another whole minute, so they don't trigger it. An "OFF" display was tried and dropped (Joe's call): the
+  rewrite (`nyra.went_off`), or failing that when the countdown goes (`nyra.race_finished`). An off time only counts if
+  it was already 45s+ in the past when the board first saw it: NYRA writes it after the fact, while a delay
+  sets post time ahead (race 3: 2:16 delayed to 2:31:48; counting any passed post time switched ~2 min early). An "OFF" display was tried and dropped (Joe's call): the
   site never says OFF and the rewrite comes too late to be useful as one.
 - Polling etiquette (keep it gentle): idle, track page at most every 5 min; in the window, odds every
   `poll_seconds` (20, minimum 10) and the track page once a minute. Today's card: one fragment per race,

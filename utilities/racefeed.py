@@ -57,6 +57,7 @@ class RaceFeed:
         self._card_checked = 0.0
         self._day_key = (None, None)              # (track, day) the two below belong to
         self._scheduled = {}                      # race -> first post time seen (before any rewrite)
+        self._post_seen = {}                      # race -> (latest post time, when it first appeared)
         self.finished = set()                     # races run today; the board has moved past them
         if start:
             threading.Thread(target=self._loop, daemon=True, name="racefeed").start()
@@ -157,7 +158,7 @@ class RaceFeed:
 
         day_key = (track, _today())
         if day_key != self._day_key:
-            self._day_key, self._scheduled, self.finished = day_key, {}, set()
+            self._day_key, self._scheduled, self._post_seen, self.finished = day_key, {}, {}, set()
         self._refresh_card(track)
 
         cached_track, race_num, post_time, checked = self._current
@@ -189,9 +190,17 @@ class RaceFeed:
                 log.warning(f"fetch failed {url}: {e}")
             if race or official:
                 break
+        went_off = False
         if race:
             self._scheduled.setdefault(race_num, race["post_time"])
-        if official or (race and nyra.went_off(self._scheduled.get(race_num), race["post_time"])):
+            seen = self._post_seen.get(race_num)
+            if seen is None or seen[0] != race["post_time"]:
+                if seen:
+                    log.info(f"race {race_num} post time {seen[0][11:]} -> {race['post_time'][11:]}")
+                seen = (race["post_time"], datetime.now(nyra.NYRA_TZ))
+                self._post_seen[race_num] = seen
+            went_off = nyra.went_off(self._scheduled.get(race_num), race["post_time"], seen[1])
+        if official or went_off:
             log.info(f"race {race_num} has been run; moving to the next race")
             self.finished.add(race_num)
             return 1                             # pick up the next race right away

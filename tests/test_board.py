@@ -152,12 +152,15 @@ class TestMovingOn(unittest.TestCase):
 
     def test_went_off(self):
         t = nyra.parse_post_time
-        now = t("2026-10-02T13:47:08")
-        self.assertTrue(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:45:20", now=now))   # off-time rewrite
-        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:43:00", now=now))  # unchanged
-        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:48:00", now=now))  # delayed, whole minute
-        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:49:20", now=now))  # not reached yet
-        self.assertFalse(nyra.went_off(None, "2026-10-02T13:45:20", now=now))                   # never saw the schedule
+        seen = t("2026-10-02T13:47:08")   # when the board first saw the new post time
+        self.assertTrue(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:45:20", seen))    # off-time rewrite
+        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:43:00", seen))   # unchanged
+        self.assertFalse(nyra.went_off("2026-10-02T13:43:00", "2026-10-02T13:48:00", seen))   # delayed, whole minute
+        self.assertFalse(nyra.went_off(None, "2026-10-02T13:45:20", seen))                    # never saw the schedule
+        # Delay (race 3): new post time set ahead of time; it passing later doesn't mean the race was run
+        self.assertFalse(nyra.went_off("2026-10-02T14:16:00", "2026-10-02T14:29:48", t("2026-10-02T14:27:30")))
+        # ...but the off time, written after the fact, does
+        self.assertTrue(nyra.went_off("2026-10-02T14:16:00", "2026-10-02T14:31:48", t("2026-10-02T14:34:22")))
 
     def test_race_finished(self):
         self.assertFalse(nyra.race_finished(PAGE))
