@@ -1,11 +1,12 @@
-/* Saratoga look: grandstand green and white trim, red-and-white striped awnings,
-   a Victorian racing-program headline face, and the panel framed like the infield tote board. */
-@import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;500;600&family=Courier+Prime&display=swap');
+/* Saratoga look, after the track's red logo: logo-red header with flared capitals and a striped
+   canopy, red-and-white awning valance, and the panel framed like the infield tote board (the one green). */
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&family=Old+Standard+TT:ital@1&family=Libre+Franklin:wght@400;500;600&family=Courier+Prime&display=swap');
 :root {
-  --green: #1e4a34;        /* grandstand roof and trim */
+  --red: #d33a2c;          /* Saratoga logo red */
+  --red-dark: #a92c20;     /* for small text and hover */
+  --red-wash: #fbece9;
+  --green: #1e4a34;        /* tote board frame */
   --green-deep: #12301f;   /* tote board */
-  --red: #b3202a;          /* awning red */
-  --red-dark: #8e1820;
   --linen: #f8f6f0;        /* painted clapboard */
   --paper: #ffffff;
   --ink: #1c2a21;
@@ -13,7 +14,7 @@
   --rule: #d8d2c3;
   --gold: #c4a052;         /* gilded trim, used sparingly */
   --ok: #1f7a45;
-  --display: 'Abril Fatface', 'Bodoni 72', Didot, Georgia, serif;
+  --display: 'Marcellus', Optima, 'Friz Quadrata', Georgia, serif;   /* flared capitals like the logo */
   --serif: 'Old Standard TT', Georgia, 'Times New Roman', serif;
   --sans: 'Libre Franklin', 'Franklin Gothic Medium', 'Segoe UI', Arial, sans-serif;
   --mono: 'Courier Prime', ui-monospace, Consolas, monospace;
@@ -25,10 +26,10 @@ body { background: var(--linen); color: var(--ink); font-family: var(--sans); fo
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--gold); outline-offset: 2px; }
 
-/* Header: green roofline with the striped, scalloped awning valance hanging below it */
-.board-header { position: relative; z-index: 2; background: var(--green); color: var(--linen);
+/* Header: logo red, with the striped, scalloped awning valance hanging below it */
+.board-header { position: relative; z-index: 2; background: var(--red); color: var(--paper);
                 padding: 14px 20px 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-                border-bottom: 2px solid var(--gold); }
+                border-bottom: 2px solid var(--paper); }
 .board-header::after { content: ''; position: absolute; left: 0; right: 0; top: calc(100% + 2px); height: 24px;
   background: repeating-linear-gradient(90deg, var(--red) 0 22px, var(--paper) 22px 44px);
   -webkit-mask: linear-gradient(#000, #000) top / 100% 12px no-repeat,
@@ -37,27 +38,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 radial-gradient(circle 11px at 11px 12px, #000 97%, transparent 100%) 0 0 / 22px 24px repeat-x; }
 /* Soft shadow under the valance so the white stripes read against the light page */
 .board-header::before { content: ''; position: absolute; left: 0; right: 0; top: calc(100% + 5px); height: 24px;
-  background: rgba(28, 42, 33, 0.16);
+  background: rgba(120, 30, 20, 0.18);
   -webkit-mask: linear-gradient(#000, #000) top / 100% 12px no-repeat,
                 radial-gradient(circle 11px at 11px 12px, #000 97%, transparent 100%) 0 0 / 22px 24px repeat-x;
           mask: linear-gradient(#000, #000) top / 100% 12px no-repeat,
                 radial-gradient(circle 11px at 11px 12px, #000 97%, transparent 100%) 0 0 / 22px 24px repeat-x; }
-.board-title { font-family: var(--display); font-size: 34px; line-height: 1; letter-spacing: 1px; color: var(--paper); }
+.board-title { font-family: var(--display); font-size: 32px; line-height: 1; letter-spacing: 3px; text-transform: uppercase;
+               color: var(--paper); display: flex; align-items: flex-end; gap: 10px; }
+.board-title::before { content: ''; width: 36px; height: 31px; flex: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cg fill='%23fff'%3E%3Crect x='19' y='0' width='2' height='7'/%3E%3Cpath d='M20 6 L3 22 L8 22 Z'/%3E%3Cpath d='M20 6 L12 22 L17 22 Z'/%3E%3Cpath d='M20 6 L23 22 L28 22 Z'/%3E%3Cpath d='M20 6 L32 22 L37 22 Z'/%3E%3Crect x='2' y='22' width='36' height='3'/%3E%3Crect x='4' y='25' width='2' height='9'/%3E%3Crect x='34' y='25' width='2' height='9'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat; }
 .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
-.nav-links a { font-family: var(--serif); font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
-               color: var(--linen); padding: 5px 12px; text-decoration: none; border: 1px solid transparent; }
-.nav-links a:hover { border-color: rgba(248, 246, 240, 0.5); }
-.nav-links a.active { background: var(--linen); color: var(--green); font-weight: 700; }
+.nav-links a { font-family: var(--display); font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+               color: var(--paper); padding: 5px 12px; text-decoration: none; border: 1px solid transparent; }
+.nav-links a:hover { border-color: rgba(255, 255, 255, 0.6); }
+.nav-links a.active { background: var(--paper); color: var(--red-dark); }
 
 /* Status line sits under the awning */
 .ticker { padding: 34px 20px 10px; font-family: var(--serif); font-style: italic; font-size: 15px;
-          color: var(--green); text-align: center; border-bottom: 1px solid var(--rule); }
+          color: var(--red-dark); text-align: center; border-bottom: 1px solid var(--rule); }
 
 .content { padding: 20px 16px; max-width: 900px; margin: 0 auto; }
 .section { background: var(--paper); border: 1px solid var(--rule); margin-bottom: 18px;
            box-shadow: 0 1px 0 rgba(28, 42, 33, 0.04); }
-.section-header { font-family: var(--serif); font-weight: 700; font-size: 14px; letter-spacing: 3px;
-                  text-transform: uppercase; color: var(--green); padding: 12px 16px 10px;
+.section-header { font-family: var(--display); font-size: 16px; letter-spacing: 3px;
+                  text-transform: uppercase; color: var(--red-dark); padding: 12px 16px 10px;
                   border-bottom: 1px solid var(--rule); }
 .section-header::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 10px;
                           background: var(--red); transform: rotate(45deg) translateY(-2px); }
@@ -65,7 +69,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .section-body.single { grid-template-columns: 1fr; }
 @media (max-width: 600px) {
   .section-body { grid-template-columns: 1fr; }
-  .board-title { font-size: 28px; }
+  .board-title { font-size: 26px; }
   .nav-links { margin-left: 0; }
 }
 
@@ -74,30 +78,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .field label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 .field input, .field select { background: var(--paper); border: 1px solid var(--rule); color: var(--ink);
   font-family: var(--sans); font-size: 15px; padding: 8px 10px; width: 100%; border-radius: 2px; }
-.field input:focus, .field select:focus { border-color: var(--green); outline: 1px solid var(--green); }
+.field input:focus, .field select:focus { border-color: var(--red); outline: 1px solid var(--red); }
 .field.checkbox { flex-direction: row; align-items: center; gap: 10px; }
-.field.checkbox input { width: auto; height: 16px; accent-color: var(--green); }
+.field.checkbox input { width: auto; height: 16px; accent-color: var(--red); }
 .field.checkbox label { font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink); }
 .hint { font-size: 12px; color: var(--muted); }
 
 .actions { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-top: 1px solid var(--rule);
            position: sticky; bottom: 0; background: var(--paper); z-index: 10; flex-wrap: wrap; }
-.btn { font-family: var(--serif); font-weight: 700; font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+.btn { font-family: var(--display); font-size: 16px; letter-spacing: 2px; text-transform: uppercase;
        padding: 9px 22px; cursor: pointer; border: 1px solid transparent; border-radius: 2px; }
 .btn-save { background: var(--red); color: var(--paper); }
 .btn-save:hover { background: var(--red-dark); }
-.btn-reset { background: transparent; border-color: var(--green); color: var(--green); }
-.btn-reset:hover { background: var(--green); color: var(--paper); }
+.btn-reset { background: transparent; border-color: var(--red-dark); color: var(--red-dark); }
+.btn-reset:hover { background: var(--red-wash); }
 #msg { font-size: 14px; }
 #msg.ok { color: var(--ok); } #msg.err { color: var(--red); }
 
 /* Track and view switches */
-.toggle { display: flex; border: 1px solid var(--green); width: fit-content; max-width: 100%; border-radius: 2px; }
-.toggle button { font-family: var(--serif); font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
-                 padding: 8px 16px; background: var(--paper); color: var(--green); border: none; cursor: pointer; }
-.toggle button + button { border-left: 1px solid var(--green); }
-.toggle button.on { background: var(--green); color: var(--paper); font-weight: 700; }
-.toggle button:hover:not(.on) { background: #e9efe9; }
+.toggle { display: flex; border: 1px solid var(--red); width: fit-content; max-width: 100%; border-radius: 2px; }
+.toggle button { font-family: var(--display); font-size: 16px; letter-spacing: 2px; text-transform: uppercase;
+                 padding: 8px 16px; background: var(--paper); color: var(--red-dark); border: none; cursor: pointer; }
+.toggle button + button { border-left: 1px solid var(--red); }
+.toggle button.on { background: var(--red); color: var(--paper); }
+.toggle button:hover:not(.on) { background: var(--red-wash); }
 
 /* The LED panel picture, framed like the infield tote board */
 .panel { background: var(--green-deep); border: 1px solid var(--gold); outline: 4px solid var(--green);

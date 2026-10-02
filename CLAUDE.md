@@ -71,9 +71,9 @@ Pi from the page's post time (the site's own text caps at 99). Post times are Ea
 Modes: race board when next post <= `race_window_minutes` (90); otherwise idle clock/weather, identical
 to the plane tracker (NWS alerts kept, FAA and ISS alerts removed).
 
-Web UI: Saratoga style (Joe's call, Oct 2026; replaced the amber plane-tracker look): grandstand green
-header, red-and-white scalloped awning valance, Victorian headline type, panel picture framed like the infield
-tote board. All in web/static/style.css; purely visual. Track toggle (Saratoga/Belmont) and view toggle (Full/Big MTP) on the
+Web UI: Saratoga style (Joe's call, Oct 2026; replaced the amber plane-tracker look): header in the
+Saratoga logo's red (#d33a2c) with flared capitals and a small white canopy, red-and-white scalloped awning
+valance, red controls; the panel picture framed in tote-board green, the only green on the page. All in web/static/style.css; purely visual. Track toggle (Saratoga/Belmont) and view toggle (Full/Big MTP) on the
 Board page. "On the panel now" shows a picture in both modes, like the plane tracker's display mirror: the
 race board image, or the clock & weather screen redrawn from what the idle scenes recorded. Race settings apply live within ~1s; weather/clock/hardware settings need Restart.
 
