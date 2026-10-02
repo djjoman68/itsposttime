@@ -10,6 +10,7 @@ from datetime import datetime
 import config
 from setup import frames
 from utilities.animator import Animator
+from utilities.idle_render import render_idle
 from utilities.racefeed import RaceFeed
 
 from scenes.temperature import TemperatureScene
@@ -89,6 +90,9 @@ class Display(
         self.feed = RaceFeed()
         self._config_mtime = self._read_config_mtime()
         self._last_frame = None
+        # What the idle scenes last drew, for the web UI's picture (see utilities/idle_render.py)
+        self._idle_view = {}
+        self._idle_version = 0
 
         super().__init__()
         self.delay = frames.PERIOD
@@ -132,10 +136,15 @@ class Display(
         }
         try:
             _atomic_write(STATUS_FILE, lambda p: open(p, "w").write(json.dumps(status)))
-            frame = getattr(self, "last_race_image", None)
-            if race and frame is not None and frame is not self._last_frame:
-                _atomic_write(FRAME_FILE, lambda p: frame.save(p, format="PNG"))
-                self._last_frame = frame
+            if race:
+                frame = getattr(self, "last_race_image", None)
+                if frame is not None and frame is not self._last_frame:
+                    _atomic_write(FRAME_FILE, lambda p: frame.save(p, format="PNG"))
+                    self._last_frame = frame
+            elif self._last_frame != ("idle", self._idle_version):
+                idle = render_idle(self._idle_view)
+                _atomic_write(FRAME_FILE, lambda p: idle.save(p, format="PNG"))
+                self._last_frame = ("idle", self._idle_version)
         except Exception as e:
             print(f"status write failed: {e}")
 

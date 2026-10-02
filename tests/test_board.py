@@ -83,6 +83,50 @@ class TestDesignRules(unittest.TestCase):
             self.assertIsNotNone(img.getbbox())
 
 
+class TestIdlePicture(unittest.TestCase):
+    """The web UI's picture of the clock & weather screen."""
+
+    def test_font_matches_panel_placement(self):
+        from PIL import Image
+        from utilities import idle_render
+        img = Image.new("RGB", (8, 8))
+        # 4x6 "1", baseline at y=5 like graphics.DrawText: rows .X.. / XX.. / .X.. / .X.. / XXX.
+        self.assertEqual(idle_render.draw_text(img, "4x6.bdf", 0, 5, (255, 0, 0), "1"), 4)
+        lit = {(x, y) for y in range(8) for x in range(8) if img.getpixel((x, y)) != (0, 0, 0)}
+        self.assertEqual(lit, {(1, 0), (0, 1), (1, 1), (1, 2), (1, 3), (0, 4), (1, 4), (2, 4)})
+
+    def test_record_only_counts_changes(self):
+        from utilities.idle_render import record
+
+        class Scene:
+            pass
+        s = Scene()
+        op = [("text", "5x8.bdf", 40, 6, (255, 255, 255), "72°")]
+        record(s, "temperature", op)
+        record(s, "temperature", list(op))
+        self.assertEqual(s._idle_version, 1)
+
+
+def sample_forecast():
+    """Three days of made-up weather in the shape Tomorrow.io returns."""
+    today = datetime.now().astimezone().replace(hour=6, minute=0, second=0, microsecond=0)
+    days = []
+    for i, (code, lo, hi) in enumerate([(1000, 61, 79), (4001, 58, 66), (1100, 55, 70)]):
+        d = today + timedelta(days=i)
+        days.append({"startTime": d.isoformat(), "values": {
+            "weatherCodeFullDay": code, "temperatureMin": lo, "temperatureMax": hi, "moonPhase": 2,
+            "sunriseTime": d.strftime("%Y-%m-%dT11:00:00Z"), "sunsetTime": d.strftime("%Y-%m-%dT22:30:00Z")}})
+    return days
+
+
+def _use_sample_weather():
+    """Keep the idle screens off the internet: sample weather, no weather alerts."""
+    from scenes import clock, date, daysforecast, temperature
+    clock.grab_forecast = date.grab_forecast = daysforecast.grab_forecast = lambda tag="": sample_forecast()
+    temperature.grab_temperature_and_humidity = lambda: (72.4, 40, 1000)
+    clock.get_nws_alerts = lambda: []
+
+
 class TestDisplayLoop(unittest.TestCase):
     def test_idle_race_idle(self):
         import display
@@ -95,6 +139,7 @@ class TestDisplayLoop(unittest.TestCase):
                 pass
 
         display.RaceFeed = FakeFeed
+        _use_sample_weather()
         d = display.Display()
 
         def step(n):
@@ -109,6 +154,15 @@ class TestDisplayLoop(unittest.TestCase):
 
         step(12)
         self.assertEqual(d._data, [])
+        # Idle: the clock screen is recorded and redrawn as a picture for the web UI
+        from utilities.idle_render import render_idle
+        self.assertEqual(set(d._idle_view), {"clock", "temperature", "date", "forecast"})
+        self.assertEqual(d._idle_view["temperature"][0][5], "72°")
+        self.assertEqual([op[5] for op in d._idle_view["forecast"] if op[0] == "text"][:3],
+                         [datetime.now().strftime("%a"), "79", "61"])
+        self.assertIsNotNone(render_idle(d._idle_view).getbbox())
+        d.write_status(0)
+        self.assertEqual(d._last_frame, ("idle", d._idle_version))
         race = nyra.parse_race(PAGE)
         race["post_time"] = (datetime.now(nyra.NYRA_TZ) + timedelta(minutes=30)).replace(tzinfo=None).isoformat(timespec="seconds")
         d.feed.race = race

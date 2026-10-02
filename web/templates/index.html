@@ -53,6 +53,20 @@ function fmtPost(iso) {
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"} ET`;
 }
 
+// Picture of the panel (race board or clock & weather), reloaded in place so it doesn't flicker
+function showFrame(alt) {
+  const panel = document.getElementById("panel");
+  let img = panel.querySelector("img");
+  if (!img) {
+    panel.innerHTML = "";
+    img = document.createElement("img");
+    img.onerror = () => { panel.innerHTML = '<div class="idle-note">Waiting for the first picture…</div>'; };
+    panel.appendChild(img);
+  }
+  img.alt = alt;
+  img.src = `/board.png?t=${Date.now()}`;
+}
+
 async function refresh() {
   try {
     const r = await fetch("/api/status"); const d = await r.json();
@@ -71,11 +85,11 @@ async function refresh() {
     const track = TRACK_NAMES[s.track] || s.track;
     if (s.mode === "race") {
       ticker.textContent = `${track} · Race ${s.race} · Post ${fmtPost(s.post_time)}`;
-      panel.innerHTML = `<img src="/board.png?t=${Date.now()}" alt="Race board">`;
+      showFrame("Race board");
       details.innerHTML = `<b>Race ${s.race}</b> · ${s.runners} running · view: ${s.view === "big_mtp" ? "Big MTP" : "Full board"}`;
     } else {
       ticker.textContent = `${track} · No race within the window — showing clock & weather`;
-      if (lastMode !== "idle") panel.innerHTML = '<div class="idle-note">Clock &amp; weather</div>';
+      showFrame("Clock and weather");
       details.innerHTML = "";
     }
     if (s.feed_updated) details.innerHTML += `<br>NYRA last checked: ${s.feed_updated.slice(11)}`;

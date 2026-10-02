@@ -1,10 +1,12 @@
-# Modified for the LED odds board (2026): comment updated for race mode.
+# Modified for the LED odds board (2026): comment updated for race mode; records what it draws
+# for the web UI's picture of the panel.
 # Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from datetime import datetime, timedelta
 import time
 import colorsys
 from rgbmatrix import graphics
 from utilities.animator import Animator
+from utilities.idle_render import record, text_op
 from setup import colours, fonts, frames, screen
 from utilities.temperature import grab_temperature_and_humidity, _load_file_cache, _TEMP_CACHE_FILE, _CACHE_TTL
 from config import NIGHT_START, NIGHT_END
@@ -118,3 +120,5 @@ class TemperatureScene(object):
                 temp_colour,
                 display_str,
             )
+            record(self, "temperature", [text_op(TEMPERATURE_FONT, TEMPERATURE_POSITION[0],
+                                                 TEMPERATURE_POSITION[1], temp_colour, display_str)])

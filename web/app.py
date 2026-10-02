@@ -83,7 +83,7 @@ def api_status():
 
 @app.get("/board.png")
 def board_png():
-    """Latest race frame, enlarged to look like the LED panel."""
+    """Latest picture of the panel (race board or clock & weather), enlarged to look like the LEDs."""
     from PIL import Image
     if not os.path.exists(FRAME_FILE):
         return ("", 204)

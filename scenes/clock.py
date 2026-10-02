@@ -1,8 +1,10 @@
 # Modified for the LED odds board (2026): removed FAA airport and ISS alerts; NWS weather alerts kept.
+# Records what it draws for the web UI's picture of the panel; 12-hour time works off Linux too.
 # Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from datetime import datetime, timezone
 from utilities.temperature import grab_forecast, _load_file_cache, _save_file_cache
 from utilities.animator import Animator
+from utilities.idle_render import record, text_op
 from setup import colours, fonts, frames
 from rgbmatrix import graphics
 import logging
@@ -178,8 +180,11 @@ class ClockScene(object):
             return
 
         now = datetime.now()
-        clock_format = "%l:%M" if CLOCK_FORMAT == "12hr" else "%H:%M"
-        current_time = now.strftime(clock_format)
+        if CLOCK_FORMAT == "12hr":
+            # Same as strftime("%l:%M") (space-padded hour), which only works on Linux
+            current_time = f"{now.hour % 12 or 12:2d}:{now.minute:02d}"
+        else:
+            current_time = now.strftime("%H:%M")
 
         utc_sunrise, utc_sunset = self.calculate_sunrise_sunset()
         now_utc = datetime.now(timezone.utc)
@@ -243,10 +248,12 @@ class ClockScene(object):
             graphics.DrawText(self.canvas, CLOCK_SMALL_FONT,
                               x, CLOCK_SMALL_POSITION[1],
                               clock_color, current_time)
+            drawn = [text_op(CLOCK_SMALL_FONT, x, CLOCK_SMALL_POSITION[1], clock_color, current_time)]
         else:
             graphics.DrawText(self.canvas, CLOCK_FONT,
                               CLOCK_POSITION[0], CLOCK_POSITION[1],
                               clock_color, current_time)
+            drawn = [text_op(CLOCK_FONT, CLOCK_POSITION[0], CLOCK_POSITION[1], clock_color, current_time)]
 
         # Draw alert text below clock
         if alert_text:
@@ -255,6 +262,8 @@ class ClockScene(object):
             graphics.DrawText(self.canvas, ALERT_FONT,
                               alert_x, ALERT_POSITION[1],
                               alert_color, alert_text)
+            drawn.append(text_op(ALERT_FONT, alert_x, ALERT_POSITION[1], alert_color, alert_text))
+        record(self, "clock", drawn)
 
         self._last_time = current_time
         self._alert_active = alert_now_active

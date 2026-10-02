@@ -1,9 +1,9 @@
-"""Save an LED-style picture of the race screens, no panel needed.
+"""Save an LED-style picture of the race screens and the clock & weather screen, no panel needed.
 
     python3 tools/preview.py                     # uses the sample page in tests/fixtures
     python3 tools/preview.py saved_page.html     # or a page saved from nyra.com (Ctrl+S, HTML only)
 
-Writes preview.png in the current folder.
+Writes preview.png in the current folder. The clock screen uses made-up sample weather.
 """
 import os
 import sys
@@ -25,6 +25,37 @@ for mtp in (25, 8, 2):
     for p in range(page_count(r)):
         frames.append((f"Full board, {mtp} MTP" + (f", page {p + 1}" if page_count(r) > 1 else ""), render_full_board(r, p)))
     frames.append((f"Big MTP, {mtp} MTP", render_big_mtp(r)))
+
+
+def idle_frame():
+    """Run the real display loop on the stand-in panel with sample weather, and
+    return the web UI's picture of the clock & weather screen."""
+    sys.path.insert(0, os.path.join(ROOT, "tests"))
+    import test_board                                              # adds the stand-in panel
+    import display
+    from utilities.idle_render import render_idle
+
+    class NoRaces:
+        race, last_update, last_error = None, None, None
+
+        def refresh_now(self):
+            pass
+
+    display.RaceFeed = NoRaces
+    test_board._use_sample_weather()
+    d = display.Display()
+    for frame in range(12):
+        d.frame = frame
+        for kf in d.keyframes:
+            p = kf.properties
+            if frame == 0 and p["divisor"] == 0:
+                kf()
+            if frame > 0 and p["divisor"] and not ((frame - p["offset"]) % p["divisor"]):
+                kf(p["count"])
+    return render_idle(d._idle_view)
+
+
+frames.append(("Clock & weather (sample weather)", idle_frame()))
 
 pad, cap = 20, 26
 tiles = [(t, led_preview(img, dot=8)) for t, img in frames]

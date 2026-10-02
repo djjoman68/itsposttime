@@ -39,10 +39,11 @@ Repo: https://github.com/djjoman68/itsposttime
 | `utilities/nyra.py` | Parses NYRA pages: `current_race()`, `parse_race()`, `minutes_to_post()` |
 | `utilities/racefeed.py` | Background polling thread |
 | `utilities/race_render.py` | Pure Pillow drawing of both race views, custom 3x5 pixel font, saddle cloth colors |
+| `utilities/idle_render.py` | Web UI picture of the clock & weather screen: idle scenes `record()` what they draw, `render_idle()` redraws it with the panel's .bdf fonts |
 | `web/` | Flask app on :8080 — Board, Settings, Logs |
 | `install.sh` | Installs packages, systemd service `odds-board`, removes stray crontab autostarts |
-| `tests/` | Offline tests with a fake `rgbmatrix` and a synthetic sample page |
-| `tools/preview.py` | Renders preview.png of the race screens |
+| `tests/` | Offline tests with a fake `rgbmatrix`, a synthetic sample page and sample weather (no internet) |
+| `tools/preview.py` | Renders preview.png of the race screens and the clock & weather screen |
 
 ## Agreed design rules
 
@@ -70,7 +71,8 @@ Modes: race board when next post <= `race_window_minutes` (90); otherwise idle c
 to the plane tracker (NWS alerts kept, FAA and ISS alerts removed).
 
 Web UI: amber plane-tracker style. Track toggle (Saratoga/Belmont) and view toggle (Full/Big MTP) on the
-Board page. Race settings apply live within ~1s; weather/clock/hardware settings need Restart.
+Board page. "On the panel now" shows a picture in both modes, like the plane tracker's display mirror: the
+race board image, or the clock & weather screen redrawn from what the idle scenes recorded. Race settings apply live within ~1s; weather/clock/hardware settings need Restart.
 
 ## Data source (NYRA, no API)
 

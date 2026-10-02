@@ -1,6 +1,9 @@
+# Modified for the LED odds board (2026): records what it draws for the web UI's picture of the panel.
+# Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from datetime import datetime
 from utilities.temperature import grab_forecast, _load_file_cache, _save_file_cache
 from utilities.animator import Animator
+from utilities.idle_render import record, text_op
 from setup import colours, fonts, frames
 from rgbmatrix import graphics
 import logging
@@ -94,6 +97,7 @@ class DateScene(object):
     def draw_gradient_text(self, text, x, y, start_color, end_color):
         text_length = len(text)
         char_width = 4  # Width of each character
+        drawn = []
         for i, char in enumerate(text):
             position = i / (text_length - 1)
             r = int(start_color.red + (end_color.red - start_color.red) * position)
@@ -109,6 +113,8 @@ class DateScene(object):
                 char_color,
                 char,
             )
+            drawn.append(text_op(DATE_FONT, char_x, y, char_color, char))
+        record(self, "date", drawn)
 
     @Animator.KeyFrame.add(frames.PER_SECOND * 1)
     def date(self, count):

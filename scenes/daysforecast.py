@@ -1,10 +1,12 @@
-# Modified for the LED odds board (2026): icons loaded from the project folder; tracked-flight hook removed.
+# Modified for the LED odds board (2026): icons loaded from the project folder; tracked-flight hook removed;
+# records what it draws for the web UI's picture of the panel.
 # Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from collections import Counter
 from datetime import datetime, timedelta
 from PIL import Image
 
 from utilities.animator import Animator
+from utilities.idle_render import image_op, record, text_op
 from setup import colours, fonts, frames, screen
 from utilities.temperature import grab_forecast, grab_hourly_forecast
 from config import NIGHT_START, NIGHT_END
@@ -246,6 +248,7 @@ class DaysForecastScene(object):
 
             if self._last_hour is not None:
                 self.draw_square(0, 12, 64, 32, colours.BLACK)
+            self._forecast_drawn = []
 
             self._last_hour = current_hour
             self._active_mode = eff_mode
@@ -262,6 +265,7 @@ class DaysForecastScene(object):
                         forecast = self._cached_forecast
                     else:
                         self._cached_forecast = None
+                        record(self, "forecast", [])
                         return
                 else:
                     self._cached_forecast = forecast
@@ -274,6 +278,7 @@ class DaysForecastScene(object):
                 self._render_hourly(forecast)
             else:
                 self._render_daily(forecast)
+            record(self, "forecast", self._forecast_drawn)
 
     def _render_daily(self, forecast):
         offset = 1
@@ -338,6 +343,8 @@ class DaysForecastScene(object):
         day_x = offset + (space_width - label_width) // 2 + 1
 
         graphics.DrawText(self.canvas, TEXT_FONT, day_x, DAY_POSITION, DAY_COLOUR, label)
+        drawn = self.__dict__.setdefault("_forecast_drawn", [])
+        drawn.append(text_op(TEXT_FONT, day_x, DAY_POSITION, DAY_COLOUR, label))
 
         # Try the exact icon; if a 5-digit day/night variant is missing,
         # fall back to its 4-digit base code (always present for daily mode).
@@ -364,6 +371,9 @@ class DaysForecastScene(object):
                 for px in range(w):
                     r, g, b = pixels[px, py]
                     self.canvas.SetPixel(px + icon_x, py + ICON_POSITION, r, g, b)
+            drawn.append(image_op(icon_x, ICON_POSITION, rgb))
 
         graphics.DrawText(self.canvas, TEXT_FONT, max_temp_x, TEMP_POSITION, MAX_T_COLOUR, max_temp)
         graphics.DrawText(self.canvas, TEXT_FONT, min_temp_x, TEMP_POSITION, MIN_T_COLOUR, min_temp)
+        drawn.append(text_op(TEXT_FONT, max_temp_x, TEMP_POSITION, MAX_T_COLOUR, max_temp))
+        drawn.append(text_op(TEXT_FONT, min_temp_x, TEMP_POSITION, MIN_T_COLOUR, min_temp))
