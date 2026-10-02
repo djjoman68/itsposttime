@@ -23,8 +23,9 @@ Repo: https://github.com/djjoman68/itsposttime
 - Hardware bought (Oct 1 2026): Pi 3A+ and microSD in hand; Bonnet, 64x32 4mm panel, 5V 4A supply,
   extra-tall header and heatsink ordered from Adafruit, in the mail. Nothing has run on a real panel or
   against live NYRA polling yet.
-- SD card flashed (SETUP.md step 1 done, Oct 1 2026). Next: when the Adafruit parts arrive, continue
-  from SETUP.md step 2.
+- Oct 2 2026: SETUP.md steps 1, 3, 4 and 6 done on the real Pi, powered by micro-USB with no Bonnet or
+  panel attached. install.sh worked; the service runs and the web UI loads at oddsboard.local:8080.
+  Next: step 7 settings now; when the Adafruit parts arrive, steps 2 and 5 (assembly, panel test).
 
 ## Layout
 
