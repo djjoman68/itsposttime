@@ -28,6 +28,7 @@ Repo: https://github.com/djjoman68/itsposttime
   Next: step 7 settings now; when the Adafruit parts arrive, steps 2 and 5 (assembly, panel test).
 - Oct 2 2026: clock & weather picture on the Board page confirmed working on the real Pi.
 - Oct 2 2026: auto track (picked Belmont) and today's card confirmed on the real Pi during a live Belmont card.
+- Oct 5 2026: hardware assembled (Bonnet + 64x32 panel); the board runs on the real panel. Panel checks below pending.
 
 ## Layout
 
