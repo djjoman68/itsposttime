@@ -134,3 +134,19 @@ table.card tr.next td.state { color: var(--red-dark); font-style: normal; font-f
   table.card th, table.card td { padding-left: 5px; padding-right: 5px; }
   .toggle button { padding: 8px 11px; letter-spacing: 1px; }
 }
+
+/* Wi-Fi section on the Settings page */
+.wifi-label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+              margin-top: 4px; }
+.wifi-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.wifi-name { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+.wifi-tag { font-family: var(--serif); font-style: italic; color: var(--ok); }
+.btn-small { font-size: 13px; padding: 5px 12px; }
+.wifi-pick { display: flex; gap: 8px; }
+.wifi-pick select { flex: 1; min-width: 0; }
+.wifi-pick .btn { flex: none; }
+#wifi-other { margin-top: 6px; }
+.wifi-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 8px; }
+#wifi-controls { display: grid; gap: 12px; margin-top: 8px; }
+#wifi-msg { font-size: 14px; }
+#wifi-msg.ok { color: var(--ok); } #wifi-msg.err { color: var(--red); }

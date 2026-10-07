@@ -420,5 +420,111 @@ class TestShutdownButton(unittest.TestCase):
         self.assertEqual(calls, [["sudo", "-n", "true"]])
 
 
+
+class FakeNmcli:
+    """Stands in for NetworkManager: on HomeNet (profile "preconfigured"), Mars saved, neighbors in range."""
+
+    def __init__(self, fail_up=()):
+        self.calls, self.fail_up, self.active = [], set(fail_up), "preconfigured"
+        self.saved = {"preconfigured": "HomeNet", "Mars": "Mars"}
+
+    def __call__(self, cmd, **kw):
+        import subprocess
+        args = cmd[3:]                                   # after "sudo -n nmcli"
+        self.calls.append(args)
+        out, code = "", 0
+        if args[:3] == ["-t", "-f", "DEVICE,TYPE,STATE,CONNECTION"]:
+            out = f"wlan0:wifi:connected:{self.active}\nlo:loopback:connected (externally):lo\n"
+        elif args[:3] == ["-t", "-f", "NAME,TYPE"]:
+            out = "".join(n.replace(":", "\\:") + ":802-11-wireless\n" for n in self.saved) + "lo:loopback\n"
+        elif args[:3] == ["-e", "no", "-g"]:
+            out = self.saved[args[-1]] + "\n"
+        elif args[:3] == ["-t", "-f", "IN-USE,SSID,SIGNAL"]:
+            out = f"*:{self.saved[self.active]}:72\n :Neighbor\:5G:40\n"
+        elif args[:3] == ["-t", "-f", "SSID,SIGNAL,SECURITY"]:
+            out = "HomeNet:72:WPA2\nNeighbor\:5G:40:WPA2 WPA3\nNeighbor\:5G:55:WPA2 WPA3\n:30:WPA2\nCafe:20:--\nLab:35:WPA3\n"
+        elif "up" in args:
+            name = args[-1]
+            if name in self.fail_up:
+                out, code = "Error: Connection activation failed: Secrets were required, but not provided", 4
+            else:
+                self.active = name
+        elif args[:2] == ["connection", "delete"]:
+            del self.saved[args[2]]
+        elif args[:2] == ["connection", "add"]:
+            self.saved[args[args.index("con-name") + 1]] = args[args.index("ssid") + 1]
+        return subprocess.CompletedProcess(cmd, code, stdout=out if code == 0 else "", stderr=out if code else "")
+
+
+class TestWifiSettings(unittest.TestCase):
+    def setUp(self):
+        from web import wifi
+        self.wifi, self.nm = wifi, FakeNmcli()
+        self._saved_run = wifi.subprocess.run
+        wifi.subprocess.run = self.nm
+
+    def tearDown(self):
+        self.wifi.subprocess.run = self._saved_run
+
+    def test_reads_nmcli_escapes(self):
+        self.assertEqual(self.wifi._split("Neighbor\:5G:40"), ["Neighbor:5G", "40"])
+
+    def test_status(self):
+        self.assertEqual(self.wifi.status(), {"available": True, "current": "HomeNet", "signal": 72, "saved": [
+            {"name": "preconfigured", "ssid": "HomeNet", "active": True},
+            {"name": "Mars", "ssid": "Mars", "active": False}]})
+
+    def test_scan_one_entry_per_network_strongest_first(self):
+        self.assertEqual(self.wifi.scan(), [
+            {"ssid": "HomeNet", "signal": 72, "security": "WPA2"},
+            {"ssid": "Neighbor:5G", "signal": 55, "security": "WPA2 WPA3"},
+            {"ssid": "Lab", "signal": 35, "security": "WPA3"},
+            {"ssid": "Cafe", "signal": 20, "security": ""}])
+
+    def test_add_saves_without_switching(self):
+        self.wifi.add("Neighbor:5G", "correct horse", "WPA2 WPA3")
+        add = self.nm.calls[-1]
+        self.assertEqual(add[:2], ["connection", "add"])
+        self.assertEqual(add[add.index("wifi-sec.key-mgmt") + 1], "wpa-psk")
+        self.wifi.add("Lab", "correct horse", "WPA3")             # WPA3-only
+        self.assertIn("sae", self.nm.calls[-1])
+        self.wifi.add("Cafe", "", "")                              # open network: no security settings
+        self.assertNotIn("wifi-sec.psk", self.nm.calls[-1])
+        self.assertFalse(any("up" in c for c in self.nm.calls))
+        self.assertEqual(self.nm.active, "preconfigured")
+
+    def test_add_updates_a_saved_network(self):
+        self.wifi.add("HomeNet", "new password")
+        self.assertEqual(self.nm.calls[-1][:3], ["connection", "modify", "preconfigured"])
+
+    def test_rejects_bad_input(self):
+        with self.assertRaises(self.wifi.WifiError):
+            self.wifi.add("Cafe", "short")
+        with self.assertRaises(self.wifi.WifiError):
+            self.wifi.add("  ", "long enough")
+        with self.assertRaises(self.wifi.WifiError):
+            self.wifi.forget("preconfigured")                     # the network in use
+
+    def test_switch(self):
+        self.wifi.switch("Mars", background=False)
+        self.assertEqual((self.nm.active, self.wifi.last_switch()["state"]), ("Mars", "ok"))
+
+    def test_failed_switch_goes_back(self):
+        self.nm.fail_up = {"Mars"}
+        self.wifi.switch("Mars", background=False)
+        s = self.wifi.last_switch()
+        self.assertEqual((s["state"], s["previous"], self.nm.active), ("failed", "preconfigured", "preconfigured"))
+        self.assertIn("Secrets were required", s["error"])
+
+    def test_web_endpoints(self):
+        from web import app as web
+        c = web.app.test_client()
+        self.assertEqual(c.get("/api/wifi").get_json()["current"], "HomeNet")
+        self.assertEqual(c.post("/api/wifi/add", json={"ssid": "Cafe", "password": ""}).get_json(), {"ok": True, "name": "Cafe"})
+        r = c.post("/api/wifi/forget", json={"name": "preconfigured"})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("using right now", r.get_json()["error"])
+
+
 if __name__ == "__main__":
     unittest.main()

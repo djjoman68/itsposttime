@@ -18,6 +18,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 import config  # noqa: E402
 from utilities.race_render import led_preview  # noqa: E402
+from web import wifi  # noqa: E402
 
 SERVICE = "odds-board"
 CFG_PATH = os.path.join(BASE_DIR, "config", "config.json")
@@ -149,6 +150,59 @@ def api_shutdown():
         subprocess.run(["sudo", "-n", "systemctl", "poweroff"], capture_output=True)
     threading.Thread(target=_do, daemon=True).start()
     return jsonify({"ok": True})
+
+
+# ---------- Wi-Fi (see web/wifi.py) ----------
+def _wifi(fn):
+    try:
+        return jsonify(fn())
+    except wifi.WifiError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.get("/api/wifi")
+def wifi_status():
+    try:
+        return jsonify(dict(wifi.status(), last_switch=wifi.last_switch()))
+    except wifi.WifiError as e:
+        return jsonify({"available": False, "error": str(e), "last_switch": wifi.last_switch()})
+
+
+@app.get("/api/wifi/scan")
+def wifi_scan():
+    return _wifi(lambda: {"ok": True, "networks": wifi.scan()})
+
+
+@app.post("/api/wifi/add")
+def wifi_add():
+    d = request.get_json(force=True) or {}
+
+    def go():
+        name = wifi.add(d.get("ssid"), d.get("password"), d.get("security", ""))
+        if d.get("switch"):
+            wifi.switch(name)
+        return {"ok": True, "name": name}
+    return _wifi(go)
+
+
+@app.post("/api/wifi/switch")
+def wifi_switch():
+    name = (request.get_json(force=True) or {}).get("name", "")
+
+    def go():
+        wifi.switch(name)
+        return {"ok": True}
+    return _wifi(go)
+
+
+@app.post("/api/wifi/forget")
+def wifi_forget():
+    name = (request.get_json(force=True) or {}).get("name", "")
+
+    def go():
+        wifi.forget(name)
+        return {"ok": True}
+    return _wifi(go)
 
 
 @app.get("/api/system")

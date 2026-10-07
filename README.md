@@ -24,7 +24,8 @@ Data comes from NYRA's public racing pages. No paid API.
 
 `http://<pi-name>.local:8080`
 - **Board**: live picture of the panel, Saratoga/Belmont and Full board/Big MTP toggles
-- **Settings**: racing, clock & weather (Tomorrow.io key), brightness and night dimming
+- **Settings**: racing, clock & weather (Tomorrow.io key), brightness and night dimming, Wi-Fi networks,
+  restart and shut down
 - **Logs**: recent service output
 
 ## Hardware

@@ -76,6 +76,33 @@
     </div>
   </div>
 
+  <div class="section">
+    <div class="section-header">Wi-Fi</div>
+    <div class="section-body single">
+      <div class="stat" id="wifi-now">Checking…</div>
+      <div id="wifi-saved"></div>
+      <div id="wifi-controls">
+        <div class="field"><label for="wifi-ssid">Add a network</label>
+          <div class="wifi-pick">
+            <select id="wifi-ssid"><option value="">Press Scan to list networks in range</option></select>
+            <button class="btn btn-reset" id="wifi-scan" type="button">Scan</button>
+          </div>
+          <input type="text" id="wifi-other" placeholder="Network name" autocomplete="off" hidden>
+        </div>
+        <div class="field"><label for="wifi-pass">Password</label>
+          <input type="password" id="wifi-pass" autocomplete="new-password">
+          <span class="hint">Leave empty for an open network.</span></div>
+        <div class="wifi-actions">
+          <button class="btn btn-reset" id="wifi-add" type="button">Save network</button>
+          <button class="btn btn-save" id="wifi-add-switch" type="button">Save and switch now</button>
+        </div>
+        <div class="hint">The board joins any saved network whenever it's in range. Wi-Fi changes apply right away;
+          there's no need to press Save.</div>
+      </div>
+      <div id="wifi-msg"></div>
+    </div>
+  </div>
+
   <div class="actions">
     <button class="btn btn-save" id="save">Save</button>
     <button class="btn btn-reset" id="restart">Restart display</button>
@@ -124,6 +151,118 @@ document.getElementById("shutdown").onclick = async () => {
   } catch (e) { msg("Couldn't reach the board", false); }
 };
 
+// ---------- Wi-Fi ----------
+// Network names come from whatever is nearby, so they only ever go into the page as text.
+const el = id => document.getElementById(id);
+function wmsg(t, ok) { const m = el("wifi-msg"); m.textContent = t; m.className = ok ? "ok" : "err"; }
+function node(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+async function post(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  return r.json();
+}
+
+function confirmSwitch(name, current) {
+  return confirm(`Switch the board to ${name} now?
+
+This page will stop responding here. Connect this phone or computer to ` +
+    `${name}, then open http://oddsboard.local:8080.
+
+If the board can't join ${name}, it goes back to ` +
+    `${current || "its current network"} within about a minute.`);
+}
+
+let wifiCurrent = null, wifiPoll = null;
+async function wifiLoad() {
+  let d;
+  try { d = await (await fetch("/api/wifi")).json(); } catch (e) { return; }
+  const now = el("wifi-now");
+  if (!d.available) {
+    now.textContent = d.error;
+    el("wifi-controls").hidden = true;
+    return;
+  }
+  wifiCurrent = d.current;
+  now.replaceChildren();
+  if (d.current) now.append("Connected to ", node("b", null, d.current), ` · signal ${d.signal}%`);
+  else now.append("Not connected to Wi-Fi");
+
+  const list = el("wifi-saved");
+  list.replaceChildren();
+  if (d.saved.length) list.append(node("div", "wifi-label", "Saved networks"));
+  for (const n of d.saved) {
+    const row = node("div", "wifi-row");
+    row.append(node("span", "wifi-name", n.ssid));
+    if (n.active) row.append(node("span", "wifi-tag", "Connected"));
+    else {
+      const go = node("button", "btn btn-reset btn-small", "Switch now");
+      go.type = "button";
+      go.onclick = async () => {
+        if (!confirmSwitch(n.ssid, wifiCurrent)) return;
+        const r = await post("/api/wifi/switch", {name: n.name});
+        r.ok ? switching(n.ssid) : wmsg(r.error, false);
+      };
+      const forget = node("button", "btn btn-reset btn-small", "Forget");
+      forget.type = "button";
+      forget.onclick = async () => {
+        if (!confirm(`Forget ${n.ssid}? The board won't join it again unless you add it back.`)) return;
+        const r = await post("/api/wifi/forget", {name: n.name});
+        r.ok ? (wmsg(`Forgot ${n.ssid}`, true), wifiLoad()) : wmsg(r.error, false);
+      };
+      row.append(go, forget);
+    }
+    list.append(row);
+  }
+
+  const s = d.last_switch || {};
+  if (s.state === "ok") { wmsg(`Switched to ${s.name} at ${s.at}`, true); stopPoll(); }
+  else if (s.state === "failed") {
+    wmsg(`Couldn't join ${s.name}: ${s.error}` + (s.previous ? `. Back on ${s.previous}.` : ""), false); stopPoll();
+  }
+}
+function stopPoll() { if (wifiPoll) { clearInterval(wifiPoll); wifiPoll = null; } }
+function switching(name) {
+  wmsg(`Switching to ${name}… If it works, this page stops responding here: connect to ${name} and reopen the page.`, true);
+  stopPoll();
+  wifiPoll = setInterval(wifiLoad, 5000);
+}
+
+el("wifi-ssid").onchange = () => { el("wifi-other").hidden = el("wifi-ssid").value !== "__other__"; };
+
+el("wifi-scan").onclick = async () => {
+  wmsg("Looking for networks…", true);
+  const r = await (await fetch("/api/wifi/scan")).json();
+  if (!r.ok) return wmsg(r.error, false);
+  const sel = el("wifi-ssid");
+  sel.replaceChildren(node("option", null, "Choose a network…"));
+  sel.firstChild.value = "";
+  for (const n of r.networks) {
+    const o = node("option", null, `${n.ssid}  (${n.signal}%${n.security ? "" : ", open"})`);
+    o.value = n.ssid;
+    o.dataset.security = n.security;
+    sel.append(o);
+  }
+  const other = node("option", null, "Other (type the name)…");
+  other.value = "__other__";
+  sel.append(other);
+  wmsg(`Found ${r.networks.length} network${r.networks.length === 1 ? "" : "s"}`, true);
+};
+
+async function wifiAdd(andSwitch) {
+  const sel = el("wifi-ssid");
+  const ssid = sel.value === "__other__" ? el("wifi-other").value.trim() : sel.value;
+  if (!ssid) return wmsg("Choose a network first (press Scan), or pick Other and type its name.", false);
+  if (andSwitch && !confirmSwitch(ssid, wifiCurrent)) return;
+  const security = sel.selectedOptions[0]?.dataset.security || "";
+  const r = await post("/api/wifi/add", {ssid, password: el("wifi-pass").value, security, switch: andSwitch});
+  if (!r.ok) return wmsg(r.error, false);
+  el("wifi-pass").value = "";
+  if (andSwitch) switching(ssid);
+  else { wmsg(`Saved ${ssid}. The board will join it whenever it's in range.`, true); wifiLoad(); }
+}
+el("wifi-add").onclick = () => wifiAdd(false);
+el("wifi-add-switch").onclick = () => wifiAdd(true);
+
+wifiLoad();
 load();
 </script>
 </body>
