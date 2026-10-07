@@ -133,6 +133,24 @@ def api_restart():
     return jsonify({"ok": True})
 
 
+@app.post("/api/shutdown")
+def api_shutdown():
+    """Shut the Pi down so it can be unplugged without risking the SD card."""
+    try:
+        # Same passwordless sudo the Restart button relies on; check first so the page can say if it's missing
+        allowed = subprocess.run(["sudo", "-n", "true"], capture_output=True, timeout=10).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        allowed = False
+    if not allowed:
+        return jsonify({"ok": False, "error": "The Pi wouldn't allow it. Connect to the Pi and type: sudo shutdown -h now"}), 500
+
+    def _do():
+        time.sleep(1)    # let the page get its reply first
+        subprocess.run(["sudo", "-n", "systemctl", "poweroff"], capture_output=True)
+    threading.Thread(target=_do, daemon=True).start()
+    return jsonify({"ok": True})
+
+
 @app.get("/api/system")
 def api_system():
     out = {}

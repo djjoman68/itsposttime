@@ -128,6 +128,7 @@ Done. The board shows clock and weather, and switches to the race board 90 minut
     sudo systemctl status odds-board      # is it running?
     sudo systemctl restart odds-board     # restart it
     sudo systemctl stop odds-board        # stop it (e.g. to run it by hand)
+    sudo shutdown -h now                  # turn the Pi off safely (or Settings -> Shut down)
     journalctl -u odds-board -n 50        # recent log lines (also on the web Logs page)
 
 ## Updating to a new version

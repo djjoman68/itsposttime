@@ -43,7 +43,7 @@ Repo: https://github.com/djjoman68/itsposttime
 | `utilities/racefeed.py` | Background polling thread; resolves the "auto" track and reads today's card |
 | `utilities/race_render.py` | Pure Pillow drawing of both race views, custom 3x5 pixel font, saddle cloth colors |
 | `utilities/idle_render.py` | Web UI picture of the clock & weather screen: idle scenes `record()` what they draw, `render_idle()` redraws it with the panel's .bdf fonts |
-| `web/` | Flask app on :8080 — Board, Settings, Logs |
+| `web/` | Flask app on :8080 — Board, Settings (incl. Restart display, Shut down), Logs |
 | `install.sh` | Installs packages, systemd service `odds-board`, removes stray crontab autostarts |
 | `tests/` | Offline tests with a fake `rgbmatrix`, a synthetic sample page and sample weather (no internet) |
 | `tools/preview.py` | Renders preview.png of the race screens and the clock & weather screen |
@@ -132,3 +132,6 @@ race board image, or the clock & weather screen redrawn from what the idle scene
 - The Pi runs one copy only (lock file + systemd). If Joe reports flicker or GPIO errors, check for a
   second process first.
 - Service name `odds-board`; logs via `journalctl -u odds-board`; web on port 8080.
+- Settings → Shut down powers the Pi off (`sudo -n systemctl poweroff`, same passwordless sudo as Restart). Joe unplugged
+  it while running once (Oct 5); it survived. Startup takes ~2 min: no RTC, so the clock starts at the last saved
+  time and jumps when it syncs; the board settles a minute after.

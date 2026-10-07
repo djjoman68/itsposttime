@@ -79,6 +79,7 @@
   <div class="actions">
     <button class="btn btn-save" id="save">Save</button>
     <button class="btn btn-reset" id="restart">Restart display</button>
+    <button class="btn btn-reset" id="shutdown">Shut down</button>
     <span id="msg"></span>
   </div>
 </div>
@@ -112,6 +113,15 @@ document.getElementById("save").onclick = async () => {
 document.getElementById("restart").onclick = async () => {
   await fetch("/api/restart", {method: "POST"});
   msg("Restarting… the panel will be back in about 20 seconds", true);
+};
+
+document.getElementById("shutdown").onclick = async () => {
+  if (!confirm("Shut down the odds board?\n\nThe panel and this page will stop. To start it again, unplug the power and plug it back in.")) return;
+  try {
+    const d = await (await fetch("/api/shutdown", {method: "POST"})).json();
+    if (d.ok) msg("Shutting down… unplug once the Pi's green light stops flickering (about 30 seconds)", true);
+    else msg(d.error, false);
+  } catch (e) { msg("Couldn't reach the board", false); }
 };
 
 load();

@@ -378,5 +378,47 @@ class TestDisplayLoop(unittest.TestCase):
         self.assertEqual(d._data, [])
 
 
+
+class TestShutdownButton(unittest.TestCase):
+    """Settings -> Shut down: powers the Pi off only if it allows it, and never on this computer."""
+
+    def _press(self, sudo_ok):
+        import subprocess
+        import threading
+        from web import app as web
+        calls = []
+
+        def fake_run(cmd, **kw):
+            calls.append(cmd)
+            return subprocess.CompletedProcess(cmd, 0 if sudo_ok else 1)
+
+        class NowThread:                 # run the power-off step straight away instead of in the background
+            def __init__(self, target, daemon=None):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        saved = web.subprocess.run, web.threading.Thread, web.time.sleep
+        web.subprocess.run, web.threading.Thread, web.time.sleep = fake_run, NowThread, lambda s: None
+        try:
+            r = web.app.test_client().post("/api/shutdown")
+        finally:
+            web.subprocess.run, web.threading.Thread, web.time.sleep = saved
+        self.assertIs(threading.Thread, saved[1])
+        return r, calls
+
+    def test_powers_off_when_allowed(self):
+        r, calls = self._press(sudo_ok=True)
+        self.assertEqual(r.get_json(), {"ok": True})
+        self.assertEqual(calls, [["sudo", "-n", "true"], ["sudo", "-n", "systemctl", "poweroff"]])
+
+    def test_explains_when_not_allowed(self):
+        r, calls = self._press(sudo_ok=False)
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("sudo shutdown -h now", r.get_json()["error"])
+        self.assertEqual(calls, [["sudo", "-n", "true"]])
+
+
 if __name__ == "__main__":
     unittest.main()
