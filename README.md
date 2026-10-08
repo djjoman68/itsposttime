@@ -3,6 +3,8 @@
 A Raspberry Pi and a 64x32 RGB LED panel that show live odds and minutes-to-post
 for **Saratoga** or **Belmont Park**, and a clock with a 3-day forecast the rest of the time.
 
+![The panel's screens: race board, big minutes-to-post, clock and weather, today's card and Pick 5s](docs/screenshots/panel-screens.png)
+
 ## What it shows
 
 **Race board** (from 90 minutes before post)
@@ -27,6 +29,8 @@ Data comes from NYRA's public racing pages. No paid API.
 - **Settings**: racing, clock & weather (Tomorrow.io key), brightness and night dimming, Wi-Fi networks,
   restart and shut down
 - **Logs**: recent service output
+
+<img src="docs/screenshots/web-board.jpg" alt="Board page: live picture of the panel, today's card and Pick 5s" width="420">
 
 ## Hardware
 
@@ -68,3 +72,5 @@ Released under the **GNU General Public License v3.0**, the same license as Flig
 See [LICENSE](LICENSE).
 
 Race data is read from nyra.com for personal, non-commercial display.
+
+Screenshots use made-up sample races and weather, not data from nyra.com.
