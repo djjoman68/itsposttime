@@ -304,6 +304,47 @@ class TestCardScreen(unittest.TestCase):
             config.CARD_SECONDS, display.time = saved
 
 
+class TestCardOpensOnFirstPage(unittest.TestCase):
+    def test_card_screen_starts_with_the_first_races(self):
+        import config
+        import display
+        from scenes import race as race_scene
+
+        class Feed:
+            race, last_update, last_error = None, None, None
+            track, card, next_race = "belmont", SAMPLE_CARD, "1"     # 5 races: 2 pages
+
+            def refresh_now(self):
+                pass
+
+        class Clock:
+            now = 0.0
+
+            @staticmethod
+            def time():
+                return Clock.now
+
+        display.RaceFeed = Feed
+        _use_sample_weather()
+        d = display.Display()
+        saved = config.CARD_SECONDS, config.RACE_PAGE_SECONDS, display.time, race_scene.time
+        try:
+            config.CARD_SECONDS, config.RACE_PAGE_SECONDS = 45, 5
+            display.time = race_scene.time = Clock
+            for start in (45.0, 3 * 45.0 + 17):        # any moment the card's turn begins
+                Clock.now = start - 45                  # clock's turn first
+                d.check_for_race(0)
+                Clock.now = start
+                d.check_for_race(0)
+                d.race_board(0)
+                self.assertEqual(d.canvas.img.tobytes(), rr.render_card("belmont", SAMPLE_CARD, 0).tobytes())
+                Clock.now = start + 5                   # one page flip later: races 5+
+                d.race_board(0)
+                self.assertEqual(d.canvas.img.tobytes(), rr.render_card("belmont", SAMPLE_CARD, 1).tobytes())
+        finally:
+            config.CARD_SECONDS, config.RACE_PAGE_SECONDS, display.time, race_scene.time = saved
+
+
 class TestPick5s(unittest.TestCase):
     """Pick 5s come from each race's bets line (only the race a Pick 5 starts with lists it).
     Any number per day, any name."""

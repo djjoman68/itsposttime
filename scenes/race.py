@@ -19,6 +19,11 @@ class RaceScene(object):
     def __init__(self):
         super().__init__()
 
+    def _page_now(self):
+        """Pages flip every RACE_PAGE_SECONDS, counted from when this screen appeared,
+        so the card always opens on its first races and a big field on page 1."""
+        return int((time.time() - getattr(self, "_screen_started", 0.0)) // config.RACE_PAGE_SECONDS)
+
     @Animator.KeyFrame.add(frames.PER_SECOND * 1)
     def race_board(self, count):
         if not self._data:
@@ -29,7 +34,7 @@ class RaceScene(object):
             # Race pages, then the Pick 5 page(s) if any Pick 5 is still to start
             rows, seqs = race["card"], race.get("pick5s", [])
             card_pages = card_page_count(rows)
-            page = int(time.time() // config.RACE_PAGE_SECONDS) % (card_pages + pick5_page_count(seqs))
+            page = self._page_now() % (card_pages + pick5_page_count(seqs))
             if page < card_pages:
                 image = render_card(race["track"], rows, page)
             else:
@@ -43,7 +48,7 @@ class RaceScene(object):
             image = render_big_mtp(race)
         else:
             pages = page_count(race)
-            page = int(time.time() // config.RACE_PAGE_SECONDS) % pages
+            page = self._page_now() % pages
             image = render_full_board(race, page)
 
         self.last_race_image = image   # also shown in the web UI

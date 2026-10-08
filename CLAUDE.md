@@ -73,7 +73,9 @@ Today's card screen (Joe's request, Oct 2026): on race days, when no race is wit
 alternates clock & weather and the card, `card_seconds` (45) each; 0 = off. Header: track name, "SARATOGA" in
 Saratoga red (211,58,44), "BELMONT" in forest green (34,139,34); "TODAY" dim gray. 4 races per page, races still to come only, next race first:
 race number blue (right-aligned), post time 12-hour with small lowercase a/p ("1:10p"), distance in furlongs, surface DRT brown / TRF
-green. More than 4: pages flip every `page_seconds`. Gone once the day's last race is off.
+green. More than 4: pages flip every `page_seconds`,
+counted from when the card's turn starts, so it always opens on the first races (Joe, Oct 2026). Same for big
+fields on the race board: a race always opens on page 1. Gone once the day's last race is off.
 
 Pick 5 page (Joe, Oct 2026): after the race pages, the card screen shows a page per up-to-4 Pick 5s still to
 start: header track name + "PICK 5" dim; one line each: name white (NYRA's word before "Pick 5"; plain "PICK 5";

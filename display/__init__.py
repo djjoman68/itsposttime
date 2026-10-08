@@ -95,6 +95,8 @@ class Display(
         # What the idle scenes last drew, for the web UI's picture (see utilities/idle_render.py)
         self._idle_view = {}
         self._idle_version = 0
+        self._screen = None              # "card", a race number, or None (clock)
+        self._screen_started = 0.0       # when it appeared; pages count from here
 
         super().__init__()
         self.delay = frames.PERIOD
@@ -168,6 +170,10 @@ class Display(
         mode_changed = bool(new_data) != bool(self._data)
         # Card screen has no "race", so switching card <-> race board also clears the panel
         race_changed = bool(new_data and self._data) and new_data[0].get("race") != self._data[0].get("race")
+        # Note when the card screen or a race appears, so paging starts from its first page
+        screen = "card" if card else race["race"] if race else None
+        if screen != self._screen:
+            self._screen, self._screen_started = screen, time.time()
         self._data = new_data
         if mode_changed:
             # Switching between race board and clock: clear and let the scenes redraw
