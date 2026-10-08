@@ -63,9 +63,11 @@ Full board (64x32):
 - Odds color vs morning line: red if lower than ML (bet down), green if higher, white if equal or unparseable.
 - Odds ending in "/1" display without it (6/1 shows as 6). All other formats unchanged (9/2, 3/10).
 - Sidebar top to bottom: MTP in 2x digits, race number "R1"/"R10" in blue, distance in furlongs
-  ("6.5F"; miles converted, 1 1/16M = 8.5F), surface "DRT" in brown or "TRF" in green (other: white).
+  ("6.5F"; miles converted, 1 1/16M = 8.5F), surface "DRT" in brown, "TRF" in green, "SYN" in blue
+  (Synthetic/Poly/Tapeta/All Weather; Joe, Oct 2026); unknown surfaces show nothing.
 
-Big MTP view: header "RACE 5   MTP" centered (race blue, MTP dim gray); MTP digits at 4x, centered below.
+Big MTP view (revised by Joe, Oct 2026): "RACE 5" top-left in blue, time of day top-right in gray (150,150,150),
+12-hour with a/p ("2:47p"); MTP digits at 4x, centered below; "MTP" dim gray bottom-right beside the digits.
 
 Today's card screen (Joe's request, Oct 2026): on race days, when no race is within the window, the panel
 alternates clock & weather and the card, `card_seconds` (45) each; 0 = off. Header: track name, "SARATOGA" in
@@ -117,6 +119,8 @@ race board image, or the clock & weather screen redrawn from what the idle scene
 
 ## Not yet verified (check once hardware is running)
 
+- The word NYRA uses for a synthetic race (short_surface covers Synthetic/Poly/Tapeta/All Weather); a blank surface
+  on a synthetic race means it needs another word.
 - What the header shows after the last race (board should fall back to clock). Between races: see above.
 - Saratoga's page layout matches Belmont's (same NYRA site; expected yes, confirm next summer).
 - How NYRA writes even money and other odd formats (unparseable odds show white).

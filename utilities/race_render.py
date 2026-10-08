@@ -4,6 +4,8 @@ Everything is drawn onto a 64x32 Pillow image. On the Pi that image goes
 straight to the panel with matrix.SetImage(); here it can also be saved
 as an enlarged LED-style preview, so what you see is what the panel shows.
 """
+from datetime import datetime
+
 from PIL import Image, ImageDraw
 
 W, H = 64, 32
@@ -16,6 +18,7 @@ GREEN = (0, 230, 60)
 BLUE = (90, 150, 255)    # program numbers
 DIM = (90, 90, 90)       # scratches, labels
 BROWN = (180, 100, 40)   # dirt
+GRAY = (150, 150, 150)   # time of day on the Big MTP view
 BLACK = (0, 0, 0)
 
 # Compact 3x5 pixel font (custom, so preview and panel match exactly)
@@ -133,13 +136,19 @@ def short_distance(d):
     return (s + "F")[:4]
 
 
+SURFACE_COLORS = {"TRF": GREEN, "DRT": BROWN, "SYN": BLUE}
+
+
 def short_surface(s):
+    """NYRA's surface name -> TRF, DRT or SYN (synthetic: Poly, Tapeta, All Weather). Unknown -> ''."""
     s = s.lower()
     if "turf" in s:
         return "TRF"
     if "dirt" in s:
         return "DRT"
-    return "AW"
+    if any(w in s for w in ("synth", "poly", "tapeta", "all weather", "all-weather")) or s.strip() == "aw":
+        return "SYN"
+    return ""
 
 
 def display_odds(odds):
@@ -206,23 +215,28 @@ def render_full_board(race, page=0):
     dist = short_distance(race["distance"])
     draw_text(d, sx + (sw - text_width(dist)) // 2, 19, dist, WHITE)
     surf = short_surface(race["surface"])
-    draw_text(d, sx + (sw - text_width(surf)) // 2, 25, surf, {"TRF": GREEN, "DRT": BROWN}.get(surf, WHITE))
+    draw_text(d, sx + (sw - text_width(surf)) // 2, 25, surf, SURFACE_COLORS.get(surf, WHITE))
     return img
 
 
-def render_big_mtp(race):
-    """Header: 'RACE 5  MTP' centered. MTP number huge and centered below."""
+def short_time(hour, minute):
+    """13, 10 -> '1:10p'; 11, 30 -> '11:30a'."""
+    return f"{hour % 12 or 12}:{minute:02d}{'p' if hour >= 12 else 'a'}"
+
+
+def render_big_mtp(race, now=None):
+    """'RACE 5' top-left (blue), time of day top-right (gray), MTP number huge and
+    centered, 'MTP' (dim) bottom-right beside it."""
     img = Image.new("RGB", (W, H), BLACK)
     d = ImageDraw.Draw(img)
-    label = f"RACE {race['race']}"
-    gap = 5
-    header_w = text_width(label) + gap + text_width("MTP")
-    hx = (W - header_w) // 2
-    draw_text(d, hx, 1, label, BLUE)
-    draw_text(d, hx + text_width(label) + gap, 1, "MTP", DIM)
+    draw_text(d, 1, 1, f"RACE {race['race']}", BLUE)
+    now = now or datetime.now()
+    clock = short_time(now.hour, now.minute)
+    draw_text(d, W - text_width(clock), 1, clock, GRAY)
     mtp = race["mtp"]
     m = str(min(mtp, 99))
     draw_text(d, (W - text_width(m, 4)) // 2, 9, m, mtp_color(mtp), scale=4)
+    draw_text(d, W - text_width("MTP"), 24, "MTP", DIM)      # bottom row aligned with the digits' base
     return img
 
 
@@ -233,8 +247,7 @@ TRACK_COLORS = {"saratoga": (211, 58, 44), "belmont": (34, 139, 34)}   # Saratog
 
 def short_post(post_time_iso):
     """'2026-10-02T13:10:00' -> '1:10p', '2026-10-02T11:30:00' -> '11:30a'."""
-    h, m = int(post_time_iso[11:13]), post_time_iso[14:16]
-    return f"{h % 12 or 12}:{m}{'p' if h >= 12 else 'a'}"
+    return short_time(int(post_time_iso[11:13]), int(post_time_iso[14:16]))
 
 
 def card_page_count(rows):
@@ -244,7 +257,7 @@ def card_page_count(rows):
 def render_card(track, rows, page=0):
     """Today's card (columns: race x 0-6, time 10-30, distance 35-47, surface 53-63):
     header with the track name (Saratoga red, Belmont forest green), then 4 races
-    per page - race number (blue), post time with a/p, distance, surface (DRT brown, TRF green).
+    per page - race number (blue), post time with a/p, distance, surface (DRT brown, TRF green, SYN blue).
     `rows` are the races still to come, next race first."""
     img = Image.new("RGB", (W, H), BLACK)
     d = ImageDraw.Draw(img)
@@ -260,7 +273,7 @@ def render_card(track, rows, page=0):
         draw_text(d, 31 - text_width(post), y, post, WHITE)                 # right-aligned to x 30
         draw_text(d, 35, y, short_distance(r["distance"]), WHITE)
         surf = short_surface(r["surface"])
-        draw_text(d, W - text_width(surf), y, surf, {"TRF": GREEN, "DRT": BROWN}.get(surf, WHITE))
+        draw_text(d, W - text_width(surf), y, surf, SURFACE_COLORS.get(surf, WHITE))
     return img
 
 

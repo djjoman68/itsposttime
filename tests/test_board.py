@@ -67,6 +67,10 @@ class TestDesignRules(unittest.TestCase):
     def test_surface_and_distance(self):
         self.assertEqual(rr.short_surface("Turf"), "TRF")
         self.assertEqual(rr.short_surface("Dirt"), "DRT")
+        for name in ("Synthetic", "Poly", "Polytrack", "Tapeta", "All Weather"):
+            self.assertEqual(rr.short_surface(name), "SYN")
+        self.assertEqual(rr.SURFACE_COLORS["SYN"], rr.BLUE)
+        self.assertEqual(rr.short_surface("Snow"), "")                 # unknown: show nothing rather than guess
         self.assertEqual(rr.short_distance("6 1/2F"), "6.5F")
         self.assertEqual(rr.short_distance("1 1/16M"), "8.5F")
 
@@ -76,6 +80,19 @@ class TestDesignRules(unittest.TestCase):
         big = {"horses": [{"program": str(i), "odds": "5/1", "ml": "5/1"} for i in range(1, 13)]}
         self.assertEqual(rr.page_count(race), 1)
         self.assertEqual(rr.page_count(big), 2)
+
+    def test_big_mtp_shows_race_and_time_of_day(self):
+        race = dict(nyra.parse_race(PAGE), race="12", mtp=25)
+        img = rr.render_big_mtp(race, now=datetime(2026, 10, 8, 12, 47))
+        self.assertEqual(rr.short_time(12, 47), "12:47p")
+        self.assertEqual(rr.short_time(0, 5), "12:05a")
+        # Widest top row: "RACE 12" (blue, from x 1) and "12:47p" (gray, ending at x 63) leave a clear gap
+        race_end = 1 + rr.text_width("RACE 12")
+        clock_start = rr.W - rr.text_width("12:47p")
+        self.assertGreater(clock_start - race_end, 10)
+        self.assertEqual(img.getpixel((clock_start + 1, 1)), rr.GRAY)  # top of the "1" in 12:47p
+        self.assertEqual(img.getpixel((1, 1)), rr.BLUE)               # "R" of RACE
+        self.assertIsNotNone(img.crop((rr.W - 13, 24, rr.W, 29)).getbbox())   # MTP label bottom-right
 
     def test_screens_render(self):
         race = dict(nyra.parse_race(PAGE), mtp=8)
