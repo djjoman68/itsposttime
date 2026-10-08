@@ -125,31 +125,39 @@ def config_save():
     return jsonify({"ok": True})
 
 
-@app.post("/api/restart")
-def api_restart():
+def _sudo_allowed(cmd):
+    """Whether install.sh's sudoers rule lets this exact command run without a password.
+    (`sudo -l cmd` checks without running it; -n means never stop to ask for a password.)"""
+    try:
+        return subprocess.run(["sudo", "-n", "-l"] + cmd, capture_output=True, timeout=10).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def _sudo_later(cmd, error):
+    """Run an allowed command a moment after the page gets its reply, or explain why not."""
+    if not _sudo_allowed(cmd):
+        return jsonify({"ok": False, "error": error}), 500
+
     def _do():
-        time.sleep(0.5)
-        subprocess.run(["sudo", "systemctl", "restart", SERVICE], capture_output=True)
+        time.sleep(1)
+        subprocess.run(["sudo", "-n"] + cmd, capture_output=True)
     threading.Thread(target=_do, daemon=True).start()
     return jsonify({"ok": True})
+
+
+@app.post("/api/restart")
+def api_restart():
+    return _sudo_later(["systemctl", "restart", SERVICE],
+                       "The Pi wouldn't allow it. Run 'bash install.sh' again on the Pi to fix this.")
 
 
 @app.post("/api/shutdown")
 def api_shutdown():
     """Shut the Pi down so it can be unplugged without risking the SD card."""
-    try:
-        # Same passwordless sudo the Restart button relies on; check first so the page can say if it's missing
-        allowed = subprocess.run(["sudo", "-n", "true"], capture_output=True, timeout=10).returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        allowed = False
-    if not allowed:
-        return jsonify({"ok": False, "error": "The Pi wouldn't allow it. Connect to the Pi and type: sudo shutdown -h now"}), 500
-
-    def _do():
-        time.sleep(1)    # let the page get its reply first
-        subprocess.run(["sudo", "-n", "systemctl", "poweroff"], capture_output=True)
-    threading.Thread(target=_do, daemon=True).start()
-    return jsonify({"ok": True})
+    return _sudo_later(["systemctl", "poweroff"],
+                       "The Pi wouldn't allow it. Run 'bash install.sh' again on the Pi, "
+                       "or connect and type: sudo shutdown -h now")
 
 
 # ---------- Wi-Fi (see web/wifi.py) ----------

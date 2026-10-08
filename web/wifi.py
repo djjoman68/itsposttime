@@ -7,7 +7,7 @@
     switch(name)         -> join a saved network now, in the background; if it can't,
                             go back to the previous network. last_switch() reports how it went.
 
-Runs nmcli through the same passwordless sudo the Restart and Shut down buttons use.
+Runs nmcli as root through the sudoers rule install.sh writes (no password, nmcli only).
 Adding a network never disconnects anything; only switch() changes the connection.
 """
 import subprocess
@@ -29,6 +29,8 @@ def _run(args, timeout=30):
         raise WifiError("Wi-Fi settings need NetworkManager (nmcli), which wasn't found on this Pi.")
     except subprocess.TimeoutExpired:
         raise WifiError("The Pi's Wi-Fi tool didn't answer in time. Try again.")
+    if r.returncode != 0 and "password is required" in r.stderr:
+        raise WifiError("The Pi wouldn't allow Wi-Fi changes. Run 'bash install.sh' again on the Pi to fix this.")
     if r.returncode != 0:
         raise WifiError((r.stderr or r.stdout).strip().replace("Error: ", "") or f"nmcli failed ({r.returncode})")
     return r.stdout

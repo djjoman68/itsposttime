@@ -397,9 +397,10 @@ class TestDisplayLoop(unittest.TestCase):
 
 
 class TestShutdownButton(unittest.TestCase):
-    """Settings -> Shut down: powers the Pi off only if it allows it, and never on this computer."""
+    """Settings -> Shut down / Restart display: run only commands install.sh's sudoers rule allows,
+    and never on this computer."""
 
-    def _press(self, sudo_ok):
+    def _press(self, sudo_ok, url="/api/shutdown"):
         import subprocess
         import threading
         from web import app as web
@@ -419,7 +420,7 @@ class TestShutdownButton(unittest.TestCase):
         saved = web.subprocess.run, web.threading.Thread, web.time.sleep
         web.subprocess.run, web.threading.Thread, web.time.sleep = fake_run, NowThread, lambda s: None
         try:
-            r = web.app.test_client().post("/api/shutdown")
+            r = web.app.test_client().post(url)
         finally:
             web.subprocess.run, web.threading.Thread, web.time.sleep = saved
         self.assertIs(threading.Thread, saved[1])
@@ -428,13 +429,20 @@ class TestShutdownButton(unittest.TestCase):
     def test_powers_off_when_allowed(self):
         r, calls = self._press(sudo_ok=True)
         self.assertEqual(r.get_json(), {"ok": True})
-        self.assertEqual(calls, [["sudo", "-n", "true"], ["sudo", "-n", "systemctl", "poweroff"]])
+        self.assertEqual(calls, [["sudo", "-n", "-l", "systemctl", "poweroff"], ["sudo", "-n", "systemctl", "poweroff"]])
 
     def test_explains_when_not_allowed(self):
         r, calls = self._press(sudo_ok=False)
         self.assertEqual(r.status_code, 500)
-        self.assertIn("sudo shutdown -h now", r.get_json()["error"])
-        self.assertEqual(calls, [["sudo", "-n", "true"]])
+        self.assertIn("bash install.sh", r.get_json()["error"])
+        self.assertEqual(calls, [["sudo", "-n", "-l", "systemctl", "poweroff"]])
+
+    def test_restart(self):
+        r, calls = self._press(sudo_ok=True, url="/api/restart")
+        self.assertEqual(r.get_json(), {"ok": True})
+        self.assertEqual(calls[-1], ["sudo", "-n", "systemctl", "restart", "odds-board"])
+        r, calls = self._press(sudo_ok=False, url="/api/restart")
+        self.assertEqual((r.status_code, len(calls)), (500, 1))
 
 
 
@@ -482,6 +490,15 @@ class TestWifiSettings(unittest.TestCase):
 
     def tearDown(self):
         self.wifi.subprocess.run = self._saved_run
+
+    def test_explains_missing_permission(self):
+        import subprocess
+
+        def needs_password(cmd, **kw):
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="sudo: a password is required\n")
+        self.wifi.subprocess.run = needs_password
+        with self.assertRaisesRegex(self.wifi.WifiError, "bash install.sh"):
+            self.wifi.status()
 
     def test_reads_nmcli_escapes(self):
         self.assertEqual(self.wifi._split("Neighbor\:5G:40"), ["Neighbor:5G", "40"])

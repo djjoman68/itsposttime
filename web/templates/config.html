@@ -138,8 +138,10 @@ document.getElementById("save").onclick = async () => {
 };
 
 document.getElementById("restart").onclick = async () => {
-  await fetch("/api/restart", {method: "POST"});
-  msg("Restarting… the panel will be back in about 20 seconds", true);
+  try {
+    const d = await (await fetch("/api/restart", {method: "POST"})).json();
+    d.ok ? msg("Restarting… the panel will be back in about 20 seconds", true) : msg(d.error, false);
+  } catch (e) { msg("Couldn't reach the board", false); }
 };
 
 document.getElementById("shutdown").onclick = async () => {

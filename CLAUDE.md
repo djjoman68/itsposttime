@@ -141,6 +141,10 @@ race board image, or the clock & weather screen redrawn from what the idle scene
   joins it when in range. Switch now runs in the background and rejoins the previous network if joining fails
   (45s). Never forget the network in use. SSIDs are untrusted (neighbors'): the page only ever sets them as text.
   Not yet tried on the real Pi; assumes Raspberry Pi OS's NetworkManager (the page says so if nmcli is missing).
-- Settings → Shut down powers the Pi off (`sudo -n systemctl poweroff`, same passwordless sudo as Restart). Joe unplugged
+- Root actions from the web page (Restart display, Shut down, Wi-Fi) go through /etc/sudoers.d/odds-board, written
+  by install.sh step 6: NOPASSWD for exactly `systemctl restart odds-board`, `systemctl poweroff` and `nmcli`.
+  Joe's Pi asks for a sudo password otherwise (don't assume passwordless sudo; Restart silently failed until Oct
+  2026). The app checks with `sudo -n -l <cmd>` and tells Joe to re-run install.sh if the rule is missing.
+- Settings → Shut down powers the Pi off (`sudo -n systemctl poweroff`). Joe unplugged
   it while running once (Oct 5); it survived. Startup takes ~2 min: no RTC, so the clock starts at the last saved
   time and jumps when it syncs; the board settles a minute after.
