@@ -91,10 +91,22 @@ function renderCard(s) {
   }
   const until = m => m >= 60 ? `in ${Math.floor(m / 60)}h ${m % 60}m` : `${m} MTP`;
   const label = c => c.state === "done" ? "Off" : c.state === "next" ? `Next · ${until(c.mtp)}` : "";
-  box.innerHTML = `<table class="card"><thead><tr><th>Race</th><th>Post (ET)</th><th>Distance</th><th>Surface</th>
-    <th>Field</th><th></th></tr></thead><tbody>` + s.card.map(c => `<tr class="${c.state}">
-    <td class="num">${c.race}</td><td>${fmtPost(c.post_time).replace(" ET", "")}</td><td>${c.distance}</td>
-    <td>${c.surface}</td><td class="num">${c.runners}</td><td class="state">${label(c)}</td></tr>`).join("") + `</tbody></table>`;
+  // Pick 5s (any number, from NYRA's bets listing): a summary line, and a tag on each race one starts with
+  const seqs = s.card.flatMap(c => (c.pick5s || []).map(p => ({...p, post: c.post_time})));
+  const summary = seqs.length ? `<div class="p5-summary">` + seqs.map(p =>
+    `<span><b>${esc(p.name)}</b> · races ${esc(p.first)}–${esc(p.last)} · ${fmtPost(p.post).replace(" ET", "")}</span>`
+  ).join("") + `</div>` : "";
+  const tags = c => (c.pick5s || []).map(p =>
+    `<span class="p5-tag">${esc(p.label === "PICK 5" ? "Pick 5" : p.label.split(" ")[0] + " P5")}</span>`).join("");
+  box.innerHTML = summary + `<table class="card"><thead><tr><th>Race</th><th>Post (ET)</th><th>Distance</th><th>Surface</th>
+    <th>Field</th><th></th></tr></thead><tbody>` + s.card.map(c => `<tr class="${esc(c.state)}">
+    <td class="num">${esc(c.race)}</td><td>${fmtPost(c.post_time).replace(" ET", "")}${tags(c)}</td><td>${esc(c.distance)}</td>
+    <td>${esc(c.surface)}</td><td class="num">${esc(c.runners)}</td><td class="state">${label(c)}</td></tr>`).join("") + `</tbody></table>`;
+}
+
+// Text from NYRA's site goes into the page as text, never as markup
+function esc(v) {
+  return String(v ?? "").replace(/[&<>"']/g, ch => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"})[ch]);
 }
 
 async function refresh() {

@@ -41,6 +41,11 @@ GLYPHS = {
     "G": ["011", "100", "101", "101", "011"], "L": ["100", "100", "100", "100", "111"],
     "N": ["1001", "1101", "1011", "1001", "1001"], "O": ["010", "101", "101", "101", "010"],
     "Y": ["101", "101", "010", "010", "010"], ":": ["0", "1", "0", "1", "0"],
+    # Rest of the alphabet, so any Pick 5 name NYRA uses can be drawn
+    "H": ["101", "101", "111", "101", "101"], "I": ["111", "010", "010", "010", "111"],
+    "J": ["001", "001", "001", "101", "010"], "K": ["101", "101", "110", "101", "101"],
+    "Q": ["010", "101", "101", "110", "011"], "V": ["101", "101", "101", "101", "010"],
+    "X": ["101", "101", "010", "101", "101"], "Z": ["111", "001", "010", "100", "111"],
     # Small lowercase a/p after post times on the card screen (1:10p)
     "a": ["000", "011", "101", "101", "011"], "p": ["000", "110", "101", "110", "100"],
 }
@@ -274,6 +279,48 @@ def render_card(track, rows, page=0):
         draw_text(d, 35, y, short_distance(r["distance"]), WHITE)
         surf = short_surface(r["surface"])
         draw_text(d, W - text_width(surf), y, surf, SURFACE_COLORS.get(surf, WHITE))
+    return img
+
+
+PICK5_ROWS = 4
+PICK5_SHORT = {"MANDATORY": "MAND"}    # "Mandatory Pay Pick 5" (Belmont, Oct 8 2026)
+
+
+def pick5_page_count(seqs):
+    return -(-len(seqs) // PICK5_ROWS)
+
+
+def render_pick5(track, seqs, page=0):
+    """Pick 5 page of the card screen: header with the track name and 'PICK 5', then one line
+    per Pick 5 still to start - name (white), races (blue), first post time with a/p.
+    Two or fewer get roomy spacing; up to 4 per page otherwise."""
+    img = Image.new("RGB", (W, H), BLACK)
+    d = ImageDraw.Draw(img)
+    draw_text(d, 1, 1, TRACK_LABELS.get(track, track.upper()), TRACK_COLORS.get(track, WHITE))
+    draw_text(d, W - text_width("PICK 5"), 1, "PICK 5", DIM)
+
+    rows = seqs[page * PICK5_ROWS:(page + 1) * PICK5_ROWS]
+    pitch, top = (9, 10) if len(seqs) <= 2 else (6, 8)
+    times = [short_post(s["post_time"]) for s in rows]
+    legs = [f"{s['first']}-{s['last']}" for s in rows]
+    right = max(map(text_width, times), default=0)
+    legs_w = max(map(text_width, legs), default=0)
+    # Names get whatever room is left; long ones are shortened to fit
+    room = W - 1 - right - 3 - legs_w - 3
+    labels = []
+    for s in rows:
+        # Plain "Pick 5" keeps its name; otherwise the first word ("MANDATORY PAY" -> MAND)
+        label = s["label"] if s["label"] == "PICK 5" else s["label"].split()[0]
+        label = "".join(c for c in PICK5_SHORT.get(label, label) if c in GLYPHS)
+        while label and text_width(label) > room:
+            label = label[:-1]
+        labels.append(label)
+    legs_x = 1 + max(map(text_width, labels), default=0) + 3
+    for i, (label, leg, t) in enumerate(zip(labels, legs, times)):
+        y = top + i * pitch
+        draw_text(d, 1, y, label, WHITE)
+        draw_text(d, legs_x, y, leg, BLUE)
+        draw_text(d, W - text_width(t), y, t, WHITE)
     return img
 
 

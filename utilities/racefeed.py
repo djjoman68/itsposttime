@@ -128,7 +128,8 @@ class RaceFeed:
                 race = None
             if race:
                 card.append({"race": race["race"], "post_time": race["post_time"], "distance": race["distance"],
-                             "surface": race["surface"], "runners": len(nyra.runners(race))})
+                             "surface": race["surface"], "runners": len(nyra.runners(race)),
+                             "pick5s": race.get("pick5s", [])})
             time.sleep(CARD_FETCH_GAP)
         if card or self._card_key != key:
             self.card, self._card_key = card, key

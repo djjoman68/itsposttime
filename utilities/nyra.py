@@ -7,6 +7,7 @@
                            surface, and every horse's program number, odds, ML
     odds_live(race)     -> whether betting has opened on a race (odds moved off the morning line)
     race_finished(html) -> whether a race page has dropped its countdown (race official)
+    pick5s(text)        -> the Pick 5s that start with a race, from its bet listing
 
 How NYRA's pages move through a race (watched live, Belmont races 1-4, Oct 2 2026):
   all day      later races show odds equal to the morning line: betting on a race
@@ -135,6 +136,29 @@ def race_finished(html):
     return has_horses and not has_countdown
 
 
+def pick5s(wagers):
+    """Pick 5s listed on a race's bets line - only the race each one starts with lists it.
+    'Exacta ($1), ..., Grand Slam (5-8), Late Pick 5 (.50) (5-9)' ->
+    [{"name": "Late Pick 5", "label": "LATE", "first": "5", "last": "9"}]
+    Any number per day, any name ("Early", "Late", plain "Pick 5", ...)."""
+    found = []
+    for item in re.split(r",\s*(?=[A-Za-z])", wagers or ""):
+        m = re.match(r"\s*(.*?)\s*Pick\s*5\b[^()]*\([^)]*\)\s*\((\d+)\s*-\s*(\d+)\)", item)
+        if m:
+            prefix = m.group(1).strip()
+            found.append({"name": f"{prefix} Pick 5".strip(), "label": prefix.upper() or "PICK 5",
+                          "first": m.group(2), "last": m.group(3)})
+    return found
+
+
+def _wagers_text(soup):
+    """The race's bets line (Exacta, Trifecta, ... Pick 5), or '' if the page has none."""
+    for div in soup.find_all("div"):
+        if div.find("div") is None and re.search(r"\b(Exacta|Trifecta|Pick\s*\d)\b", div.get_text()):
+            return div.get_text(" ", strip=True)
+    return ""
+
+
 def parse_race(html):
     """Detail for the race shown on the page, or None if the page layout isn't recognized."""
     soup = BeautifulSoup(html, "html.parser")
@@ -174,4 +198,5 @@ def parse_race(html):
         "distance": distance,
         "surface": surface,
         "horses": horses,
+        "pick5s": pick5s(_wagers_text(soup)),
     }

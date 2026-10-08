@@ -150,3 +150,9 @@ table.card tr.next td.state { color: var(--red-dark); font-style: normal; font-f
 #wifi-controls { display: grid; gap: 12px; margin-top: 8px; }
 #wifi-msg { font-size: 14px; }
 #wifi-msg.ok { color: var(--ok); } #wifi-msg.err { color: var(--red); }
+
+/* Pick 5s in Today's card */
+.p5-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 12px; font-size: 14px; }
+.p5-summary b { font-family: var(--display); font-weight: 400; letter-spacing: 1px; color: var(--red-dark); }
+.p5-tag { display: table; font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+          padding: 1px 5px; border: 1px solid var(--red); color: var(--red-dark); border-radius: 2px; margin-top: 3px; }

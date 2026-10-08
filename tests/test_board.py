@@ -151,7 +151,8 @@ class TestTodaysCard(unittest.TestCase):
         self.assertEqual(feed.track, "belmont")
         self.assertEqual(len(feed.card), 3)
         self.assertEqual(feed.card[0], {"race": "3", "post_time": "2026-10-01T15:12:00",
-                                        "distance": "1 1/16M", "surface": "Turf", "runners": 3})
+                                        "distance": "1 1/16M", "surface": "Turf", "runners": 3,
+                                        "pick5s": [{"name": "Late Pick 5", "label": "LATE", "first": "3", "last": "7"}]})
         self.assertEqual(feed.next_race, "2")
         self.assertEqual(feed.race["track"], "belmont")
 
@@ -301,6 +302,75 @@ class TestCardScreen(unittest.TestCase):
             self.assertIsNone(d._card_screen())
         finally:
             config.CARD_SECONDS, display.time = saved
+
+
+class TestPick5s(unittest.TestCase):
+    """Pick 5s come from each race's bets line (only the race a Pick 5 starts with lists it).
+    Any number per day, any name."""
+
+    def test_reads_nyra_bet_lines(self):     # Belmont, Oct 8 2026, races 1 and 5
+        self.assertEqual(nyra.pick5s("Exacta ($1), Trifecta (.50), Super (.10), Double ($1) 1 & 2, Pick 3 ($1) (1-3), "
+                                     "Early Pick 5 (.50) (1-5) (UP TO $17,400 NYSBFOA)"),
+                         [{"name": "Early Pick 5", "label": "EARLY", "first": "1", "last": "5"}])
+        self.assertEqual(nyra.pick5s("Exacta ($1), Pick 3 ($1) (5-7), Grand Slam (5-8), Late Pick 5 (.50) (5-9)"),
+                         [{"name": "Late Pick 5", "label": "LATE", "first": "5", "last": "9"}])
+        self.assertEqual(nyra.pick5s("Exacta ($1), Pick 5 (.50) (3-7), Super Hi 5 (.10)")[0]["label"], "PICK 5")
+        self.assertEqual(nyra.pick5s(""), [])
+        self.assertEqual(nyra.parse_race(PAGE)["pick5s"][0]["first"], "3")
+
+    def _seqs(self, *specs):
+        return [{"label": lab, "first": a, "last": b, "post_time": f"2026-10-08T{t}:00"} for lab, a, b, t in specs]
+
+    def test_pages(self):
+        two = self._seqs(("EARLY", "1", "5", "13:10"), ("LATE", "5", "9", "15:23"))
+        three = two + self._seqs(("PICK 5", "3", "7", "14:16"))
+        five = three + self._seqs(("TWILIGHT", "6", "10", "16:00"), ("NIGHT", "7", "11", "16:30"))
+        self.assertEqual([rr.pick5_page_count(x) for x in (two, three, five)], [1, 1, 2])
+        for seqs in (two, three, five):
+            for page in range(rr.pick5_page_count(seqs)):
+                img = rr.render_pick5("belmont", seqs, page)
+                self.assertEqual(img.size, (64, 32))
+                self.assertIsNotNone(img.crop((0, 8, 64, 32)).getbbox())
+
+    def test_mandatory_pay_shows_as_mand(self):      # Belmont, Oct 8 2026: three Pick 5s
+        self.assertEqual(nyra.pick5s("Pick 3 ($1) (3-5), Mandatory Pay Pick 5 (.50) (3-7)")[0]["label"], "MANDATORY PAY")
+        seqs = self._seqs(("EARLY", "1", "5", "13:10"), ("MANDATORY PAY", "3", "7", "14:16"), ("LATE", "5", "9", "15:23"))
+        mand = rr.Image.new("RGB", (64, 32))
+        rr.draw_text(rr.ImageDraw.Draw(mand), 1, 14, "MAND", rr.WHITE)
+        self.assertEqual(rr.render_pick5("belmont", seqs).crop((0, 14, 20, 19)).tobytes(), mand.crop((0, 14, 20, 19)).tobytes())
+
+    def test_long_names_are_shortened_to_fit(self):
+        seqs = self._seqs(("SUPERCALIFRAGILISTIC", "10", "14", "12:10"))
+        img = rr.render_pick5("saratoga", seqs)
+        # The time still ends at the right edge, and the races still show in blue
+        self.assertIn(rr.BLUE, [img.getpixel((x, y)) for x in range(64) for y in range(10, 15)])
+
+    def test_card_screen_lists_only_pick5s_still_to_start(self):
+        import config
+        import display
+        card = [dict(c, pick5s=[]) for c in SAMPLE_CARD]
+        card[0]["pick5s"] = [{"name": "Early Pick 5", "label": "EARLY", "first": "1", "last": "5"}]
+        card[4]["pick5s"] = [{"name": "Late Pick 5", "label": "LATE", "first": "5", "last": "9"}]
+
+        class Feed:
+            race, last_update, last_error = None, None, None
+            track, next_race = "belmont", "3"          # races 1-2 have gone: the Early Pick 5 has started
+
+            def refresh_now(self):
+                pass
+        Feed.card = card
+        display.RaceFeed = Feed
+        _use_sample_weather()
+        d = display.Display()
+        saved = config.CARD_SECONDS, display.time
+        try:
+            config.CARD_SECONDS = 45
+            display.time = type("Clock", (), {"time": staticmethod(lambda: 45.0)})
+            screen = d._card_screen()
+        finally:
+            config.CARD_SECONDS, display.time = saved
+        self.assertEqual([p["label"] for p in screen["pick5s"]], ["LATE"])
+        self.assertEqual(screen["pick5s"][0]["post_time"], SAMPLE_CARD[4]["post_time"])
 
 
 class TestIdlePicture(unittest.TestCase):

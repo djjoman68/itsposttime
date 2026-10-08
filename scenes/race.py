@@ -11,7 +11,8 @@ import config
 from setup import frames
 from utilities.animator import Animator
 from utilities.nyra import minutes_to_post
-from utilities.race_render import render_full_board, render_big_mtp, page_count, render_card, card_page_count
+from utilities.race_render import (render_full_board, render_big_mtp, page_count, render_card, card_page_count,
+                                   render_pick5, pick5_page_count)
 
 
 class RaceScene(object):
@@ -25,9 +26,14 @@ class RaceScene(object):
         race = dict(self._data[0])
 
         if "card" in race:
-            rows = race["card"]
-            page = int(time.time() // config.RACE_PAGE_SECONDS) % card_page_count(rows)
-            image = render_card(race["track"], rows, page)
+            # Race pages, then the Pick 5 page(s) if any Pick 5 is still to start
+            rows, seqs = race["card"], race.get("pick5s", [])
+            card_pages = card_page_count(rows)
+            page = int(time.time() // config.RACE_PAGE_SECONDS) % (card_pages + pick5_page_count(seqs))
+            if page < card_pages:
+                image = render_card(race["track"], rows, page)
+            else:
+                image = render_pick5(race["track"], seqs, page - card_pages)
             self.last_race_image = image
             self.canvas.SetImage(image, 0, 0)
             return

@@ -62,6 +62,11 @@ from test_board import SAMPLE_CARD                                 # noqa: E402 
 from utilities.race_render import render_card, card_page_count    # noqa: E402
 for p in range(card_page_count(SAMPLE_CARD)):
     frames.append((f"Today's card (sample), page {p + 1}", render_card("belmont", SAMPLE_CARD, p)))
+from utilities.race_render import render_pick5                    # noqa: E402
+frames.append(("Today's card, Pick 5 page (Belmont, Oct 8 2026)", render_pick5("belmont", [
+    {"label": "EARLY", "first": "1", "last": "5", "post_time": "2026-10-08T13:10:00"},
+    {"label": "MANDATORY PAY", "first": "3", "last": "7", "post_time": "2026-10-08T14:16:00"},
+    {"label": "LATE", "first": "5", "last": "9", "post_time": "2026-10-08T15:23:00"}])))
 
 pad, cap = 20, 26
 tiles = [(t, led_preview(img, dot=8)) for t, img in frames]

@@ -75,6 +75,13 @@ Saratoga red (211,58,44), "BELMONT" in forest green (34,139,34); "TODAY" dim gra
 race number blue (right-aligned), post time 12-hour with small lowercase a/p ("1:10p"), distance in furlongs, surface DRT brown / TRF
 green. More than 4: pages flip every `page_seconds`. Gone once the day's last race is off.
 
+Pick 5 page (Joe, Oct 2026): after the race pages, the card screen shows a page per up-to-4 Pick 5s still to
+start: header track name + "PICK 5" dim; one line each: name white (NYRA's word before "Pick 5"; plain "PICK 5";
+first word only; MANDATORY -> MAND; shortened to fit), races blue ("5-9"), first post time with a/p. Two or fewer
+get roomy spacing. Gone once its first race has gone. Any number per day: Belmont Oct 8 2026 had Early 1-5,
+Mandatory Pay 3-7, Late 5-9. Web Today's card: summary line of all Pick 5s + a tag under the first leg's post time.
+Source: each race's bets line ("... Late Pick 5 (.50) (5-9)"), listed only on the race a Pick 5 starts with.
+
 MTP colors (both views): white above 10, yellow 4-10, red 3 and under. MTP rounds up and is computed on the
 Pi from the page's post time (the site's own text caps at 99). Post times are Eastern; always use
 `NYRA_TZ`, never the Pi's local zone.

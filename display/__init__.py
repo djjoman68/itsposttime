@@ -187,7 +187,13 @@ class Display(
             return None
         card = list(self.feed.card)
         rows = [c for c, st in zip(card, nyra.card_states(card, self.feed.next_race)) if st != "done"]
-        return {"card": rows, "track": self.feed.track} if rows else None
+        if not rows:
+            return None
+        upcoming = {r["race"] for r in rows}
+        # Pick 5s whose first race hasn't gone yet, with that race's post time
+        seqs = [dict(p, post_time=c["post_time"]) for c in card for p in c.get("pick5s", [])
+                if c["race"] in upcoming]
+        return {"card": rows, "track": self.feed.track, "pick5s": seqs}
 
     @Animator.KeyFrame.add(1)
     def sync(self, count):
