@@ -1,15 +1,16 @@
 # Modified for the LED odds board (2026): icons loaded from the project folder; tracked-flight hook removed;
-# records what it draws for the web UI's picture of the panel.
+# records what it draws for the web UI's picture of the panel; takes turns with a sunrise/sunset panel.
 # Originally from c0wsaysmoo/plane-tracker-rgb-pi, based on ColinWaddell/FlightTracker (GPL-3.0).
 from collections import Counter
 from datetime import datetime, timedelta
+import time
 from PIL import Image
 
 from utilities.animator import Animator
 from utilities.idle_render import image_op, record, text_op
 from setup import colours, fonts, frames, screen
 from utilities.temperature import grab_forecast, grab_hourly_forecast
-from config import NIGHT_START, NIGHT_END
+from config import CLOCK_FORMAT, NIGHT_START, NIGHT_END
 import os
 _ICON_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icons")
 from rgbmatrix import graphics
@@ -28,6 +29,14 @@ ICON_POSITION = DISTANCE_FROM_TOP - FONT_HEIGHT - ICON_SIZE
 TEMP_POSITION = DISTANCE_FROM_TOP
 NIGHT_START_TIME = datetime.strptime(NIGHT_START, "%H:%M")
 NIGHT_END_TIME = datetime.strptime(NIGHT_END, "%H:%M")
+
+# Sunrise/sunset panel (Joe, Oct 2026): takes this area for the last SUN_SECONDS of every minute
+SUN_CYCLE_SECONDS = 60
+SUN_SECONDS = 15
+SUN_FONT = fonts.small               # 5x8, fixed 5px per character
+SUN_FONT_WIDTH = 5
+SUNRISE_COLOUR = graphics.Color(255, 214, 90)
+SUNSET_COLOUR = graphics.Color(255, 120, 50)
 
 # Time-of-day periods: (label, start_hour_inclusive, end_hour_inclusive)
 _PERIODS = [
@@ -70,6 +79,23 @@ def _load_sun_map():
     except Exception:
         pass
     return sun_map
+
+
+def _next_sun_times(now=None):
+    """(next sunrise, next sunset) as local datetimes, from the daily forecast the board
+    already fetches. After sunset that's tomorrow's sunrise. None if the times aren't known."""
+    now = now or datetime.now().astimezone()
+    sun = _load_sun_map().values()
+    rises = sorted(sr for sr, _ in sun if sr > now)
+    sets = sorted(ss for _, ss in sun if ss > now)
+    return (rises[0], sets[0]) if rises and sets else None
+
+
+def _sun_label(dt):
+    """7:09a / 6:14p, or 18:14 with the 24-hour clock."""
+    if CLOCK_FORMAT == "12hr":
+        return f"{dt.hour % 12 or 12}:{dt.minute:02d}{'p' if dt.hour >= 12 else 'a'}"
+    return dt.strftime("%H:%M")
 
 
 def _is_hour_daytime(dt, sun_map):
@@ -234,6 +260,20 @@ class DaysForecastScene(object):
             self._redraw_forecast = True
             return
 
+        # Sunrise/sunset takes this area for the last SUN_SECONDS of each minute
+        sun_turn = time.time() % SUN_CYCLE_SECONDS >= SUN_CYCLE_SECONDS - SUN_SECONDS
+        if getattr(self, "_showing_sun", False) and not sun_turn:
+            self._showing_sun = False
+            self._redraw_forecast = True
+        elif sun_turn and (not getattr(self, "_showing_sun", False) or self._redraw_forecast):
+            sun = _next_sun_times()
+            if sun:                                  # unknown times: just keep the forecast up
+                self.draw_square(0, 12, 64, 32, colours.BLACK)
+                self._draw_sun(*sun)
+                self._showing_sun, self._redraw_forecast = True, False
+        if getattr(self, "_showing_sun", False):
+            return
+
         current_hour = datetime.now().hour
         eff_mode = self._effective_mode()
         mode_changed = eff_mode != self._active_mode
@@ -279,6 +319,18 @@ class DaysForecastScene(object):
             else:
                 self._render_daily(forecast)
             record(self, "forecast", self._forecast_drawn)
+
+    def _draw_sun(self, sunrise, sunset):
+        """Two lines: up arrow RISE 7:09a (yellow), down arrow SET 6:14p (orange)."""
+        drawn = []
+        for y, arrow, word, when, colour in ((21, "↑", "RISE", sunrise, SUNRISE_COLOUR),
+                                              (30, "↓", "SET", sunset, SUNSET_COLOUR)):
+            label = _sun_label(when)
+            x = 63 - len(label) * SUN_FONT_WIDTH
+            for tx, text, c in ((3, arrow, colour), (11, word, colours.WHITE), (x, label, colour)):
+                graphics.DrawText(self.canvas, SUN_FONT, tx, y, c, text)
+                drawn.append(text_op(SUN_FONT, tx, y, c, text))
+        record(self, "forecast", drawn)
 
     def _render_daily(self, forecast):
         offset = 1

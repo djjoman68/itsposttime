@@ -7,6 +7,7 @@ live via config.reload() so web UI changes apply without a restart.
 """
 import json
 import os
+from datetime import datetime
 
 _BASE     = os.path.dirname(os.path.abspath(__file__))
 _CFG_PATH = os.path.join(_BASE, "config", "config.json")
@@ -20,6 +21,7 @@ DEFAULT_CONFIG = {
         "page_seconds": 5,            # flip interval for fields over 10 horses
         "poll_seconds": 20,           # how often to re-read odds during the race window
         "card_seconds": 45,           # before the window on race days, alternate clock and today's card; 0 = off
+        "card_start": "09:00",        # don't show today's card on the panel before this time
     },
     "location": {
         "temperature_location": "",       # "lat,lon" - set in the web UI
@@ -67,7 +69,7 @@ def ensure_files():
 
 def reload():
     """Reload config from disk - call after the web UI saves changes."""
-    global RACE_TRACK, RACE_VIEW, RACE_WINDOW_MINUTES, RACE_PAGE_SECONDS, RACE_POLL_SECONDS, CARD_SECONDS
+    global RACE_TRACK, RACE_VIEW, RACE_WINDOW_MINUTES, RACE_PAGE_SECONDS, RACE_POLL_SECONDS, CARD_SECONDS, CARD_START
     global TEMPERATURE_LOCATION, TEMPERATURE_UNITS, CLOCK_FORMAT
     global BRIGHTNESS, BRIGHTNESS_NIGHT, NIGHT_BRIGHTNESS, NIGHT_START, NIGHT_END
     global GPIO_SLOWDOWN, HAT_PWM_ENABLED, LED_RGB_SEQUENCE
@@ -85,6 +87,10 @@ def reload():
     RACE_PAGE_SECONDS   = max(2, int(race["page_seconds"]))
     RACE_POLL_SECONDS   = max(10, int(race["poll_seconds"]))   # never hammer NYRA
     CARD_SECONDS        = max(0, int(race["card_seconds"]))
+    try:
+        CARD_START = datetime.strptime(race["card_start"], "%H:%M").time()
+    except (TypeError, ValueError):
+        CARD_START = datetime.strptime("09:00", "%H:%M").time()
 
     TEMPERATURE_LOCATION = loc["temperature_location"]
     TEMPERATURE_UNITS    = loc["temperature_units"]

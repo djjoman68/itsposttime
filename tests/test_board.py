@@ -285,7 +285,8 @@ class TestCardScreen(unittest.TestCase):
         display.RaceFeed = Feed
         _use_sample_weather()
         d = display.Display()
-        saved = config.CARD_SECONDS, display.time
+        saved = config.CARD_SECONDS, display.time, config.CARD_START
+        config.CARD_START = datetime.min.time()             # any time of day
         try:
             config.CARD_SECONDS = 45
             display.time = type("Clock", (), {"time": staticmethod(lambda: 45.0)})    # card's turn
@@ -297,11 +298,15 @@ class TestCardScreen(unittest.TestCase):
             self.assertEqual(d.canvas.img.tobytes(), rr.render_card("belmont", screen["card"], 0).tobytes())
             display.time = type("Clock", (), {"time": staticmethod(lambda: 90.0)})    # clock's turn
             self.assertIsNone(d._card_screen())
+            config.CARD_START = (datetime.now() + timedelta(minutes=5)).time()         # before 9am (say)
+            if config.CARD_START > datetime.now().time():                              # (skip just before midnight)
+                self.assertIsNone(d._card_screen())
+            config.CARD_START = datetime.min.time()
             config.CARD_SECONDS = 0                                                    # turned off
             display.time = type("Clock", (), {"time": staticmethod(lambda: 45.0)})
             self.assertIsNone(d._card_screen())
         finally:
-            config.CARD_SECONDS, display.time = saved
+            config.CARD_SECONDS, display.time, config.CARD_START = saved
 
 
 class TestCardOpensOnFirstPage(unittest.TestCase):
@@ -327,7 +332,8 @@ class TestCardOpensOnFirstPage(unittest.TestCase):
         display.RaceFeed = Feed
         _use_sample_weather()
         d = display.Display()
-        saved = config.CARD_SECONDS, config.RACE_PAGE_SECONDS, display.time, race_scene.time
+        saved = config.CARD_SECONDS, config.RACE_PAGE_SECONDS, display.time, race_scene.time, config.CARD_START
+        config.CARD_START = datetime.min.time()             # any time of day
         try:
             config.CARD_SECONDS, config.RACE_PAGE_SECONDS = 45, 5
             display.time = race_scene.time = Clock
@@ -342,7 +348,7 @@ class TestCardOpensOnFirstPage(unittest.TestCase):
                 d.race_board(0)
                 self.assertEqual(d.canvas.img.tobytes(), rr.render_card("belmont", SAMPLE_CARD, 1).tobytes())
         finally:
-            config.CARD_SECONDS, config.RACE_PAGE_SECONDS, display.time, race_scene.time = saved
+            config.CARD_SECONDS, config.RACE_PAGE_SECONDS, display.time, race_scene.time, config.CARD_START = saved
 
 
 class TestPick5s(unittest.TestCase):
@@ -403,15 +409,73 @@ class TestPick5s(unittest.TestCase):
         display.RaceFeed = Feed
         _use_sample_weather()
         d = display.Display()
-        saved = config.CARD_SECONDS, display.time
+        saved = config.CARD_SECONDS, display.time, config.CARD_START
+        config.CARD_START = datetime.min.time()             # any time of day
         try:
             config.CARD_SECONDS = 45
             display.time = type("Clock", (), {"time": staticmethod(lambda: 45.0)})
             screen = d._card_screen()
         finally:
-            config.CARD_SECONDS, display.time = saved
+            config.CARD_SECONDS, display.time, config.CARD_START = saved
         self.assertEqual([p["label"] for p in screen["pick5s"]], ["LATE"])
         self.assertEqual(screen["pick5s"][0]["post_time"], SAMPLE_CARD[4]["post_time"])
+
+
+class TestSunPanel(unittest.TestCase):
+    """Sunrise/sunset takes the forecast area for the last 15 seconds of each minute."""
+
+    def setUp(self):
+        from scenes import daysforecast as fc
+        self.fc = fc
+        local = lambda h, m, day=0: (datetime.now().astimezone().replace(hour=h, minute=m, second=0, microsecond=0)
+                                     + timedelta(days=day))
+        self.sun = {local(0, 0).date(): (local(7, 9), local(18, 14)),
+                    local(0, 0, 1).date(): (local(7, 10, 1), local(18, 12, 1))}
+        self._saved = fc._load_sun_map, fc.time
+        fc._load_sun_map = lambda: self.sun
+
+    def tearDown(self):
+        self.fc._load_sun_map, self.fc.time = self._saved
+
+    def test_next_sunrise_and_sunset(self):
+        rise, set_ = sorted(self.sun.values())[0]
+        noon = rise.replace(hour=12)
+        self.assertEqual(self.fc._next_sun_times(noon), (sorted(self.sun.values())[1][0], set_))   # tomorrow's sunrise
+        self.assertEqual(self.fc._next_sun_times(rise.replace(hour=5)), (rise, set_))
+        self.assertEqual(self.fc._sun_label(set_), "6:14p")
+        self.assertEqual(self.fc._sun_label(rise), "7:09a")
+
+    def test_takes_turns_with_the_forecast(self):
+        import display
+
+        class Clock:
+            now = 0.0
+
+            @staticmethod
+            def time():
+                return Clock.now
+
+        class NoRaces:
+            race, last_update, last_error = None, None, None
+            track, card, next_race = None, [], None
+
+            def refresh_now(self):
+                pass
+        display.RaceFeed = NoRaces
+        _use_sample_weather()
+        self.fc.time = Clock
+        d = display.Display()
+        words = lambda: [op[5] for op in d._idle_view.get("forecast", []) if op[0] == "text"]
+        Clock.now = 10.0                      # forecast's turn
+        d.day(0)
+        self.assertIn(datetime.now().strftime("%a"), words())
+        Clock.now = 50.0                      # last 15 seconds of the minute: sun panel
+        d.day(0)
+        self.assertEqual(words()[:3], ["↑", "RISE", self.fc._sun_label(self.fc._next_sun_times()[0])])
+        self.assertIn("SET", words())
+        Clock.now = 70.0                      # back to the forecast
+        d.day(0)
+        self.assertNotIn("RISE", words())
 
 
 class TestIdlePicture(unittest.TestCase):

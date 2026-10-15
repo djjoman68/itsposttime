@@ -191,6 +191,8 @@ class Display(
         secs = config.CARD_SECONDS
         if secs <= 0 or not self.feed.track or int(time.time() // secs) % 2 == 0:
             return None
+        if datetime.now().time() < config.CARD_START:     # not before 9am (Settings)
+            return None
         card = list(self.feed.card)
         rows = [c for c, st in zip(card, nyra.card_states(card, self.feed.next_race)) if st != "done"]
         if not rows:

@@ -88,6 +88,14 @@ MTP colors (both views): white above 10, yellow 4-10, red 3 and under. MTP round
 Pi from the page's post time (the site's own text caps at 99). Post times are Eastern; always use
 `NYRA_TZ`, never the Pi's local zone.
 
+Sun panel (Joe, Oct 2026): on the clock & weather screen, the forecast area (y 12-31) shows sunrise/sunset for the
+last 15s of every minute: "↑ RISE 7:09a" (yellow 255,214,90) and "↓ SET 6:14p" (orange 255,120,50), 5x8 font,
+word white. Next sunrise and next sunset (after sunset: tomorrow's sunrise). From the daily forecast cache; if
+unknown, the forecast stays up. Follows the 12/24-hour clock setting.
+
+Card start (Joe, Oct 2026): the panel doesn't show today's card (or Pick 5s) before `card_start` (09:00, Settings);
+the web page's Today's card is unaffected.
+
 Modes: race board when next post <= `race_window_minutes` (90); otherwise idle clock/weather, identical
 to the plane tracker (NWS alerts kept, FAA and ISS alerts removed).
 
